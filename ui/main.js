@@ -1853,7 +1853,7 @@ const MAX_VISIBLE_TOASTS = 5;
 function dismissToast(toast) {
     clearTimeout(toast._timer);
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(6px)";
+    toast.style.transform = "translateX(8px)";
     toast.style.transition = "all 0.2s ease";
     setTimeout(() => toast.remove(), 200);
 }
