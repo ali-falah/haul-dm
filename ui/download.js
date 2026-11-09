@@ -29,12 +29,16 @@ const el = {
     eta: document.getElementById("dlw-eta"),
     resumable: document.getElementById("dlw-resumable"),
     path: document.getElementById("dlw-path"),
+    error: document.getElementById("dlw-error"),
     progressTrack: document.getElementById("dlw-progress-track"),
     progress: document.getElementById("dlw-progress"),
     toggleDetails: document.getElementById("dlw-toggle-details"),
     closeWhenDone: document.getElementById("dlw-close-when-done"),
+    closeWhenDoneLabel: document.getElementById("dlw-close-when-done-label"),
     pause: document.getElementById("dlw-pause"),
     cancel: document.getElementById("dlw-cancel"),
+    openFile: document.getElementById("dlw-open-file"),
+    openFolder: document.getElementById("dlw-open-folder"),
     connections: document.getElementById("dlw-connections"),
     segbar: document.getElementById("dlw-segbar"),
     connBody: document.getElementById("dlw-conn-body"),
@@ -118,7 +122,7 @@ function categorizeFile(fileName) {
     const sets = {
         video: ["mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "m4v", "ts"],
         audio: ["mp3", "m4a", "wav", "flac", "aac", "ogg", "opus", "wma"],
-        archive: ["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "deb", "rpm", "appimage", "iso"],
+        archive: ["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "deb", "rpm", "appimage", "iso", "exe", "msi", "dmg", "apk"],
         document: ["pdf", "doc", "docx", "txt", "rtf", "odt", "epub", "xls", "xlsx", "ppt", "pptx", "csv", "md"],
         image: ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "tiff"],
     };
@@ -142,6 +146,7 @@ const CATEGORY_ICONS = {
 function setStatus(status) {
     el.status.textContent = statusLabel(status);
     el.statusPill.className = `status-pill status-${status}`;
+    document.body.dataset.status = status;
 }
 
 function setProgress(downloaded, total) {
@@ -176,6 +181,12 @@ function renderDetails(payload) {
     el.rate.textContent = formatSpeed(d.speedBytesPerSecond);
     el.eta.textContent = d.status === "in_progress" ? formatEta(d.etaSeconds) : "—";
     el.resumable.textContent = payload.resumable ? "Yes" : "No";
+    if (d.errorMessage) {
+        el.error.textContent = d.errorMessage;
+        el.error.hidden = false;
+    } else {
+        el.error.hidden = true;
+    }
 
     const category = categorizeFile(d.fileName);
     if (!el.icon.dataset.category || el.icon.dataset.category !== category) {
@@ -214,6 +225,8 @@ function renderConnections(connections, totalBytes) {
                 cell.className = "dlw-conn-status";
                 if (connection.status === "Completed") cell.classList.add("is-complete");
                 else if (connection.status === "Receiving data") cell.classList.add("is-active");
+                else if (connection.status === "Failed") cell.classList.add("is-failed");
+                else if (connection.status === "Paused") cell.classList.add("is-paused");
             }
             row.appendChild(cell);
         });
@@ -236,13 +249,31 @@ function renderConnections(connections, totalBytes) {
 }
 
 function updateControls(status) {
-    const pausable = ["in_progress", "queued", "scheduled", "paused"].includes(status);
-    const resumable = status === "paused";
-    el.pause.disabled = !pausable;
-    el.cancel.disabled = ["completed", "failed", "cancelled"].includes(status);
-    el.pause.textContent = resumable ? "Resume" : "Pause";
-    el.pause.classList.toggle("btn-primary", resumable);
-    el.pause.classList.toggle("btn-secondary", !resumable);
+    const live = ["in_progress", "queued", "scheduled", "paused"].includes(status);
+    const failed = status === "failed";
+    const completed = status === "completed";
+    const cancelled = status === "cancelled";
+    const terminal = completed || failed || cancelled;
+    const resume = status === "paused" || failed;
+
+    el.pause.hidden = !(live || failed);
+    el.cancel.hidden = terminal;
+    el.openFile.hidden = !completed;
+    el.openFolder.hidden = cancelled;
+    el.closeWhenDoneLabel.hidden = terminal;
+
+    el.pause.textContent = failed ? "Retry" : status === "paused" ? "Resume" : "Pause";
+    el.pause.dataset.action = resume ? "resume" : "pause";
+    el.pause.classList.toggle("btn-primary", resume);
+    el.pause.classList.toggle("btn-secondary", !resume);
+
+    // Terminal downloads do not need live rate/ETA; completed files do not
+    // need a resume-support row either.
+    document.querySelectorAll('.dlw-stat[data-tile="rate"], .dlw-stat[data-tile="eta"]').forEach((tile) => {
+        tile.hidden = terminal;
+    });
+    const resumableTile = document.querySelector('.dlw-stat[data-tile="resumable"]');
+    if (resumableTile) resumableTile.hidden = completed || cancelled;
 }
 
 // ── Live updates ────────────────────────────────────────────────────────────
@@ -267,8 +298,7 @@ function applyStateEvent(payload) {
 
     // Instant feedback without another IPC round-trip; the poll below
     // refreshes the connection table (throttled to ~1s by design).
-    el.status.textContent = statusLabel(payload.status);
-    el.statusPill.className = `status-pill status-${payload.status}`;
+    setStatus(payload.status);
     if (payload.totalBytes) {
         el.downloaded.textContent = `${formatBytes(downloaded)} (${percentOf(downloaded, payload.totalBytes)}%)`;
     }
@@ -278,6 +308,12 @@ function applyStateEvent(payload) {
     }
     if (payload.status === "in_progress") {
         el.eta.textContent = formatEta(payload.etaSeconds);
+    }
+    if (payload.errorMessage) {
+        el.error.textContent = payload.errorMessage;
+        el.error.hidden = false;
+    } else if (payload.status !== "failed") {
+        el.error.hidden = true;
     }
     updateControls(payload.status);
 
@@ -332,14 +368,27 @@ function init() {
     });
 
     el.pause.addEventListener("click", async () => {
-        const resume = el.pause.textContent === "Resume";
+        const action = el.pause.dataset.action === "resume" ? "resume_download" : "pause_download";
         try {
-            await invoke(resume ? "resume_download" : "pause_download", { id: downloadId });
+            await invoke(action, { id: downloadId });
         } catch (error) {
             console.error("Could not toggle download:", error);
         }
         refresh();
     });
+
+    async function openPath(command) {
+        const path = details?.download?.savePath;
+        if (!path) return;
+        try {
+            await invoke(command, { path });
+        } catch (error) {
+            console.error(`Could not run ${command}:`, error);
+        }
+    }
+
+    el.openFile.addEventListener("click", () => openPath("open_file"));
+    el.openFolder.addEventListener("click", () => openPath("open_folder"));
 
     el.cancel.addEventListener("click", async () => {
         try {

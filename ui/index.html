@@ -20,273 +20,170 @@
 </head>
 <body>
     <div class="app-layout">
-        <!-- Main Body: Sidebar + Download List Area -->
-        <div class="app-body">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar" id="app-sidebar" aria-label="Downloads navigation">
-                <div class="sidebar-header">
-                    <div class="sidebar-brand">
-                        <div class="brand-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 17V3"></path>
-                                <path d="m6 11 6 6 6-6"></path>
-                                <path d="M19 21H5"></path>
-                            </svg>
-                        </div>
-                        <div class="brand-info">
-                            <div class="brand-title">Haul DM</div>
-                        </div>
-                    </div>
-                    <button id="sidebar-collapse-btn" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
+        <header class="commandbar">
+            <div class="commandbar-brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                        <rect x="3.5" y="4" width="4.5" height="16" rx="2.25"></rect>
+                        <rect x="16" y="4" width="4.5" height="16" rx="2.25"></rect>
+                        <rect x="8" y="10" width="8" height="4" rx="2"></rect>
+                        <rect x="10.8" y="13" width="2.4" height="3" rx="1.2"></rect>
+                        <path d="M8 16h8l-4 5.2z"></path>
+                    </svg>
+                </div>
+                <span class="brand-title">Haul DM</span>
+            </div>
+
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="search-input" placeholder="Search downloads…" title="Search downloads (Ctrl+F)" aria-label="Search downloads" autocomplete="off">
+                <button id="search-clear-btn" class="search-clear" hidden title="Clear search" aria-label="Clear search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="commandbar-actions">
+                <button id="btn-new-download" class="btn btn-primary" title="New Download (Ctrl+N)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New Download</span>
+                    <span class="kbd-badge">Ctrl+N</span>
+                </button>
+                <button id="btn-pause-all" class="btn btn-secondary" title="Pause or resume all active downloads" aria-label="Pause or resume all active downloads">
+                    <svg id="icon-pause-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect>
+                        <rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect>
+                    </svg>
+                    <span id="label-pause-all">Pause All</span>
+                </button>
+                <button id="btn-open-settings" class="btn btn-ghost btn-icon-only" title="Settings" aria-label="Open settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="filterbar">
+            <div class="status-filters" role="group" aria-label="Filter by status">
+                <button class="status-filter active" data-filter="all">All <span class="filter-count" id="count-all">0</span></button>
+                <button class="status-filter" data-filter="in_progress">Downloading <span class="filter-count" id="count-in_progress">0</span></button>
+                <button class="status-filter" data-filter="queued">Queued <span class="filter-count" id="count-queued">0</span></button>
+                <button class="status-filter" data-filter="paused">Paused <span class="filter-count" id="count-paused">0</span></button>
+                <button class="status-filter" data-filter="completed">Completed <span class="filter-count" id="count-completed">0</span></button>
+                <button class="status-filter" data-filter="failed">Failed <span class="filter-count" id="count-failed">0</span></button>
+            </div>
+
+            <div class="filterbar-right">
+                <div class="custom-dropdown" id="category-dropdown">
+                    <button type="button" class="custom-dropdown-btn filter-chip" id="category-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false" title="Filter by category">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                        </svg>
+                        <span class="custom-dropdown-label" id="category-dropdown-label">All</span>
+                        <svg class="custom-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                     </button>
-                </div>
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Status</div>
-                    <nav class="sidebar-nav">
-                        <button class="nav-item active" data-filter="all" title="All Downloads">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.78 1.11z"></path>
-                            </svg>
-                            <span class="nav-label">All Downloads</span>
-                            <span class="badge" id="count-all">0</span>
-                        </button>
-                        <button class="nav-item" data-filter="in_progress" title="Downloading">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 3v12"></path>
-                                <path d="m7 10 5 5 5-5"></path>
-                                <path d="M5 21h14"></path>
-                            </svg>
-                            <span class="nav-label">Downloading</span>
-                            <span class="badge badge-active" id="count-in_progress">0</span>
-                        </button>
-                        <button class="nav-item" data-filter="queued" title="Queued">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M5 22h14"></path>
-                                <path d="M5 2h14"></path>
-                                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
-                                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
-                            </svg>
-                            <span class="nav-label">Queued</span>
-                            <span class="badge" id="count-queued">0</span>
-                        </button>
-                        <button class="nav-item" data-filter="paused" title="Paused">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect>
-                                <rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect>
-                            </svg>
-                            <span class="nav-label">Paused</span>
-                            <span class="badge" id="count-paused">0</span>
-                        </button>
-                        <button class="nav-item" data-filter="completed" title="Completed">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 6 9 17l-5-5"></path>
-                            </svg>
-                            <span class="nav-label">Completed</span>
-                            <span class="badge badge-success" id="count-completed">0</span>
-                        </button>
-                        <button class="nav-item" data-filter="failed" title="Failed">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                            </svg>
-                            <span class="nav-label">Failed</span>
-                            <span class="badge badge-danger" id="count-failed">0</span>
-                        </button>
-                    </nav>
-                </div>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Categories</div>
-                    <nav class="sidebar-nav">
-                        <button class="nav-item" data-category="all" title="All categories">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                            </svg>
-                            <span class="nav-label">All</span>
-                            <span class="badge" id="cat-all">0</span>
-                        </button>
-                        <button class="nav-item" data-category="video" title="Videos">
-                            <svg class="nav-icon cat-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path>
-                                <rect x="2" y="6" width="14" height="12" rx="2" ry="2"></rect>
-                            </svg>
-                            <span class="nav-label">Videos</span>
-                            <span class="badge" id="cat-video">0</span>
-                        </button>
-                        <button class="nav-item" data-category="audio" title="Music & Audio">
-                            <svg class="nav-icon cat-audio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M2 10v3"></path>
-                                <path d="M6 6v11"></path>
-                                <path d="M10 3v18"></path>
-                                <path d="M14 8v7"></path>
-                                <path d="M18 5v13"></path>
-                                <path d="M22 10v3"></path>
-                            </svg>
-                            <span class="nav-label">Music & Audio</span>
-                            <span class="badge" id="cat-audio">0</span>
-                        </button>
-                        <button class="nav-item" data-category="archive" title="Archives & Apps">
-                            <svg class="nav-icon cat-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                                <line x1="12" y1="22.08" x2="12" y2="11"></line>
-                            </svg>
-                            <span class="nav-label">Archives & Apps</span>
-                            <span class="badge" id="cat-archive">0</span>
-                        </button>
-                        <button class="nav-item" data-category="document" title="Documents">
-                            <svg class="nav-icon cat-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
-                                <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
-                                <path d="M10 9H8"></path>
-                                <path d="M16 13H8"></path>
-                                <path d="M16 17H8"></path>
-                            </svg>
-                            <span class="nav-label">Documents</span>
-                            <span class="badge" id="cat-document">0</span>
-                        </button>
-                        <button class="nav-item" data-category="image" title="Images">
-                            <svg class="nav-icon cat-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
-                                <circle cx="9" cy="9" r="2"></circle>
-                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
-                            </svg>
-                            <span class="nav-label">Images</span>
-                            <span class="badge" id="cat-image">0</span>
-                        </button>
-                        <button class="nav-item" data-category="other" title="Other Files">
-                            <svg class="nav-icon cat-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
-                                <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
-                            </svg>
-                            <span class="nav-label">Other Files</span>
-                            <span class="badge" id="cat-other">0</span>
-                        </button>
-                    </nav>
-                </div>
-
-                <!-- Storage quick link at bottom of sidebar -->
-                <div class="sidebar-footer">
-                    <div class="storage-info">
-                        <div class="storage-label">Default Folder</div>
-                        <div class="storage-path" id="sidebar-download-dir" title="Click to open download folder">~/Downloads</div>
+                    <div class="custom-dropdown-menu" id="category-dropdown-menu" role="listbox">
+                        <div class="custom-dropdown-item active" data-value="all" data-label="All" role="option">All <span class="filter-count" id="cat-all">0</span></div>
+                        <div class="custom-dropdown-item" data-value="video" data-label="Videos" role="option">Videos <span class="filter-count" id="cat-video">0</span></div>
+                        <div class="custom-dropdown-item" data-value="audio" data-label="Music & Audio" role="option">Music &amp; Audio <span class="filter-count" id="cat-audio">0</span></div>
+                        <div class="custom-dropdown-item" data-value="archive" data-label="Archives & Apps" role="option">Archives &amp; Apps <span class="filter-count" id="cat-archive">0</span></div>
+                        <div class="custom-dropdown-item" data-value="document" data-label="Documents" role="option">Documents <span class="filter-count" id="cat-document">0</span></div>
+                        <div class="custom-dropdown-item" data-value="image" data-label="Images" role="option">Images <span class="filter-count" id="cat-image">0</span></div>
+                        <div class="custom-dropdown-item" data-value="other" data-label="Other Files" role="option">Other Files <span class="filter-count" id="cat-other">0</span></div>
                     </div>
-                    <button id="sidebar-open-folder-btn" class="btn btn-ghost btn-icon-only btn-sm" title="Open Download Folder" aria-label="Open download folder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+                    <select id="category-select" hidden>
+                        <option value="all">All</option>
+                        <option value="video">Videos</option>
+                        <option value="audio">Music &amp; Audio</option>
+                        <option value="archive">Archives &amp; Apps</option>
+                        <option value="document">Documents</option>
+                        <option value="image">Images</option>
+                        <option value="other">Other Files</option>
+                    </select>
+                </div>
+
+                <div class="custom-dropdown" id="sort-dropdown">
+                    <button type="button" class="custom-dropdown-btn filter-chip" id="sort-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false" title="Sort downloads">
+                        <span class="custom-dropdown-label" id="sort-dropdown-label">Newest first</span>
+                        <svg class="custom-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                     </button>
-                </div>
-            </aside>
-
-            <!-- Main Content Area -->
-            <main class="content-area">
-                <!-- Toolbar: Search, Sort, Clear -->
-                <div class="content-toolbar">
-                    <div class="search-box">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" id="search-input" placeholder="Search downloads…" title="Search downloads (Ctrl+F)" aria-label="Search downloads" autocomplete="off">
-                        <button id="search-clear-btn" class="search-clear" hidden title="Clear search" aria-label="Clear search">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                            </svg>
-                        </button>
+                    <div class="custom-dropdown-menu" id="sort-dropdown-menu" role="listbox">
+                        <div class="custom-dropdown-item active" data-value="newest" role="option">Newest first</div>
+                        <div class="custom-dropdown-item" data-value="oldest" role="option">Oldest first</div>
+                        <div class="custom-dropdown-item" data-value="name" role="option">Name (A-Z)</div>
+                        <div class="custom-dropdown-item" data-value="size" role="option">Size (Largest)</div>
                     </div>
-
-                    <div class="toolbar-controls">
-                        <div class="sort-selector">
-                            <label for="sort-select">Sort by:</label>
-                            <div class="custom-dropdown" id="sort-dropdown">
-                                <button type="button" class="custom-dropdown-btn" id="sort-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
-                                    <span class="custom-dropdown-label" id="sort-dropdown-label">Newest first</span>
-                                    <svg class="custom-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="6 9 12 15 18 9"></polyline>
-                                    </svg>
-                                </button>
-                                <div class="custom-dropdown-menu" id="sort-dropdown-menu" role="listbox">
-                                    <div class="custom-dropdown-item active" data-value="newest" role="option">Newest first</div>
-                                    <div class="custom-dropdown-item" data-value="oldest" role="option">Oldest first</div>
-                                    <div class="custom-dropdown-item" data-value="name" role="option">Name (A-Z)</div>
-                                    <div class="custom-dropdown-item" data-value="size" role="option">Size (Largest)</div>
-                                </div>
-                                <select id="sort-select" hidden>
-                                    <option value="newest">Newest first</option>
-                                    <option value="oldest">Oldest first</option>
-                                    <option value="name">Name (A-Z)</option>
-                                    <option value="size">Size (Largest)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button id="clear-completed-btn" class="btn btn-secondary btn-sm" title="Remove all completed or failed items from the list" aria-label="Clear finished downloads">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                            <span>Clear Finished</span>
-                        </button>
-                    </div>
-
-                    <!-- Global Live Speed & Queue Ticker -->
-                    <div class="topbar-metrics">
-                        <div class="metric-pill" id="global-speed-pill" title="Total current download speed">
-                            <span class="speed-pulse" id="speed-pulse"></span>
-                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                            </svg>
-                            <span class="metric-value" id="global-speed">0.0 KB/s</span>
-                        </div>
-                        <div class="metric-pill metric-pill-subtle" id="global-queue-pill" title="Active transfers and queued jobs">
-                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            <span class="metric-value" id="global-queue-status">Idle</span>
-                        </div>
-                    </div>
-
-                    <!-- Header Actions -->
-                    <div class="topbar-actions">
-                        <button id="btn-new-download" class="btn btn-primary" title="New Download (Ctrl+N)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            <span>New Download</span>
-                            <span class="kbd-badge">Ctrl+N</span>
-                        </button>
-                        <button id="btn-pause-all" class="btn btn-secondary" title="Pause or resume all active downloads" aria-label="Pause or resume all active downloads">
-                            <svg id="icon-pause-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect>
-                                <rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect>
-                            </svg>
-                            <span id="label-pause-all">Pause All</span>
-                        </button>
-                        <button id="btn-open-settings" class="btn btn-ghost btn-icon-only" title="Settings" aria-label="Open settings">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                            </svg>
-                        </button>
-                    </div>
+                    <select id="sort-select" hidden>
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="name">Name (A-Z)</option>
+                        <option value="size">Size (Largest)</option>
+                    </select>
                 </div>
 
-                <!-- Downloads List Container -->
-                <div id="downloads-container" class="downloads-container">
-                    <!-- Populated dynamically via JS -->
-                </div>
-            </main>
+                <button id="clear-completed-btn" class="btn btn-ghost btn-sm btn-icon-only" title="Remove all completed or failed items from the list" aria-label="Clear finished downloads">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
+
+        <main class="content-area">
+            <div class="downloads-table">
+                <div class="table-head" aria-hidden="true">
+                    <span>Name</span>
+                    <span>Status</span>
+                    <span class="col-size">Size</span>
+                    <span>Progress</span>
+                    <span class="col-speed">Speed / ETA</span>
+                    <span class="col-actions"></span>
+                </div>
+                <div id="downloads-container" class="downloads-container"></div>
+            </div>
+
+            <footer class="statusbar">
+                <div class="status-metric" id="global-speed-pill" title="Total current download speed">
+                    <span class="speed-pulse" id="speed-pulse"></span>
+                    <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span class="metric-value" id="global-speed">0.0 KB/s</span>
+                </div>
+                <div class="status-metric" id="global-queue-pill" title="Active transfers and queued jobs">
+                    <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="metric-value" id="global-queue-status">Idle</span>
+                </div>
+                <span class="status-spacer"></span>
+                <button id="status-folder-btn" class="status-folder" title="Open download folder" aria-label="Open download folder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+                    </svg>
+                </button>
+                <span id="status-totals">0 downloads</span>
+            </footer>
+        </main>
     </div>
 
     <!-- NEW DOWNLOAD MODAL -->

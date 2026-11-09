@@ -43,6 +43,7 @@ log "Removing desktop entry + icon"
 rm -f "${HOME}/.local/share/applications/haul-dm.desktop"
 rm -f "${HOME}/.local/share/applications/linux-download-manager.desktop"  # legacy name
 rm -f "${HOME}/.local/share/icons/hicolor/256x256/apps/haul-dm.png"
+rm -f "${HOME}/.local/share/icons/hicolor/512x512/apps/haul-dm.png"
 rm -f "${HOME}/.local/share/icons/hicolor/256x256/apps/linux-download-manager.png"  # legacy name
 
 command -v update-desktop-database >/dev/null 2>&1 && \

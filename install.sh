@@ -28,7 +28,6 @@ BIN_DIR="${HOME}/.local/bin"
 export PATH="${HOME}/.cargo/bin:${BIN_DIR}:${PATH}"
 APP_DATA_DIR="${HOME}/.local/share/haul-dm"
 DESKTOP_DIR="${HOME}/.local/share/applications"
-ICON_DIR="${HOME}/.local/share/icons/hicolor/256x256/apps"
 EXT_DIR="${HOME}/Documents/Haul DM Extension"
 
 NATIVE_HOST_NAME="com.eko.linuxdownloadmanager"
@@ -144,8 +143,12 @@ install_extension() {
 
 install_desktop_entry() {
   log "Installing desktop entry + icon"
-  mkdir -p "${DESKTOP_DIR}" "${ICON_DIR}"
-  install -m 0644 "src-tauri/icons/icon.png" "${ICON_DIR}/haul-dm.png"
+  mkdir -p "${DESKTOP_DIR}"
+  for size in 256 512; do
+    local icon_dir="${HOME}/.local/share/icons/hicolor/${size}x${size}/apps"
+    mkdir -p "${icon_dir}"
+    install -m 0644 "src-tauri/icons/${size}x${size}.png" "${icon_dir}/haul-dm.png"
+  done
 
   cat > "${DESKTOP_DIR}/haul-dm.desktop" <<EOF
 [Desktop Entry]

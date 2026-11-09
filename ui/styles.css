@@ -1,6 +1,6 @@
 /* ==========================================================================
    Haul DM — "Iris" Design System
-   Inter + JetBrains Mono (bundled) · violet-iris accent · cool slate / cool mist
+   Inter + JetBrains Mono (bundled) · harbor-teal accent · cool slate / cool mist
    ========================================================================== */
 
 /* Fonts are bundled in ui/fonts so the app is fully offline — the previous
@@ -81,21 +81,21 @@
     --bg-elevated: #2b2a34;
     --bg-hover: rgba(255, 255, 255, 0.055);
 
-    /* Iris Accent — soft violet, distinctive from status colors */
-    --accent: #7b74e0;
-    --accent-hover: #6a62d0;
-    --accent-solid: #6159cc;
-    --accent-solid-hover: #5750bd;
-    --accent-subtle: rgba(123, 116, 224, 0.15);
-    --accent-text: #f4f3fc;
-    --accent-sidebar-active: #a8a2f2;
+    /* Harbor Teal — deep teal ink with a bright mint signal */
+    --accent: #2dd4bf;
+    --accent-hover: #5eead4;
+    --accent-solid: #0f766e;
+    --accent-solid-hover: #115e59;
+    --accent-subtle: rgba(45, 212, 191, 0.14);
+    --accent-text: #f0fdfa;
+    --accent-sidebar-active: #5eead4;
     --danger-solid: #b8483f;
     --danger-solid-hover: #a63c34;
 
     /* Semantic Status Colors */
-    --status-active: #857dee;
-    --status-active-bg: rgba(133, 125, 238, 0.13);
-    --status-active-text: #b3acf7;
+    --status-active: #2dd4bf;
+    --status-active-bg: rgba(45, 212, 191, 0.13);
+    --status-active-text: #5eead4;
     --status-success: #3fbf8f;
     --status-success-bg: rgba(63, 191, 143, 0.12);
     --status-success-text: #7ddfb7;
@@ -118,7 +118,7 @@
     /* Borders & Geometry — now with a soft, rounded shape language */
     --border-color: rgba(255, 255, 255, 0.09);
     --border-hover: rgba(255, 255, 255, 0.15);
-    --border-active: rgba(123, 116, 224, 0.45);
+    --border-active: rgba(45, 212, 191, 0.45);
     --radius-xs: 6px;
     --radius-sm: 8px;
     --radius-md: 12px;
@@ -142,7 +142,7 @@
     --kbd-bg: rgba(0, 0, 0, 0.28);
     --kbd-text: rgba(231, 232, 239, 0.72);
 
-    --metric-speed: #9fa4f5;
+    --metric-speed: #5eead4;
     --metric-eta: #9ba1af;
 
 
@@ -161,21 +161,21 @@
     --bg-elevated: #fbfbfd;
     --bg-hover: rgba(58, 52, 96, 0.05);
 
-    /* Iris Accent — same calm violet as dark, one brand color */
-    --accent: #6159cc;
-    --accent-hover: #524aba;
-    --accent-solid: #6159cc;
-    --accent-solid-hover: #524aba;
-    --accent-subtle: rgba(97, 89, 204, 0.11);
-    --accent-text: #f7f6fb;
-    --accent-sidebar-active: #524aba;
+    /* Harbor Teal — one brand colour, darkened for light surfaces */
+    --accent: #0f766e;
+    --accent-hover: #115e59;
+    --accent-solid: #0f766e;
+    --accent-solid-hover: #115e59;
+    --accent-subtle: rgba(15, 118, 110, 0.11);
+    --accent-text: #f0fdfa;
+    --accent-sidebar-active: #0f766e;
     --danger-solid: #b8483f;
     --danger-solid-hover: #a63c34;
 
     /* Semantic Status Colors */
-    --status-active: #6159cc;
-    --status-active-bg: rgba(97, 89, 204, 0.11);
-    --status-active-text: #4d45b3;
+    --status-active: #0f766e;
+    --status-active-bg: rgba(15, 118, 110, 0.11);
+    --status-active-text: #115e59;
     --status-success: #2e7d5b;
     --status-success-bg: rgba(46, 125, 91, 0.12);
     --status-success-text: #256a4c;
@@ -198,13 +198,13 @@
     /* Borders & Dividers */
     --border-color: #d8d6e2;
     --border-hover: #c6c3d5;
-    --border-active: rgba(97, 89, 204, 0.45);
+    --border-active: rgba(15, 118, 110, 0.45);
 
     /* Component & Control Tokens */
     --btn-secondary-bg: #f3f2f8;
     --btn-secondary-hover: #eae8f2;
     --btn-secondary-border: #d8d6e2;
-    --btn-secondary-text: #4d45b3;
+    --btn-secondary-text: #0f766e;
 
     --badge-bg: rgba(58, 52, 96, 0.07);
     --progress-track: #dedce8;
@@ -219,7 +219,7 @@
     --kbd-bg: rgba(58, 52, 96, 0.08);
     --kbd-text: #6f6c7e;
 
-    --metric-speed: #5d55c7;
+    --metric-speed: #0f766e;
     --metric-eta: #6f6c7e;
 
 }
@@ -378,34 +378,6 @@ body,
     line-height: var(--lh-tight);
 }
 
-/* Speed / Status Pill */
-.topbar-metrics {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.metric-pill {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    height: var(--control-h-sm);
-    padding: 0 10px;
-    border-radius: 999px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-main);
-    white-space: nowrap;
-}
-
-.metric-pill-subtle {
-    color: var(--text-muted);
-}
-
 .metric-icon {
     width: var(--icon-sm);
     height: var(--icon-sm);
@@ -429,245 +401,9 @@ body,
     box-shadow: 0 0 6px var(--status-success);
 }
 
-.topbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-}
-
-/* ==========================================================================
-   Body & Sidebar
-   ========================================================================== */
-
-.app-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-}
-
-.sidebar {
-    width: 210px;
-    background: var(--bg-sidebar);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 10px 10px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-shrink: 0;
-    transition: width 0.18s ease, padding 0.18s ease, background-color 0.15s ease, border-color 0.15s ease;
-}
-
-/* Sidebar header: brand identity + collapse toggle. This replaces the old
-   separate topbar brand row, so the top of the sidebar is never empty.
-   Layout: icon (+ toggle right) on line 1, full-width name + tagline below —
-   the name never has to fight the toggle for horizontal space. */
-.sidebar-header {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 6px 12px;
-    margin-bottom: 4px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-/* Promote the brand's children to header grid items */
-.sidebar-brand {
-    display: contents;
-}
-
-.sidebar-header .sidebar-toggle {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-}
-
-.sidebar-header .brand-icon {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.sidebar-header .brand-info {
-    grid-column: 2;
-    grid-row: 1;
-    min-width: 0;
-    overflow: hidden;
-    align-items: center;
-    text-align: center;
-}
-
-.sidebar-header .brand-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: var(--radius-md);
-}
-
 .sidebar-header .brand-icon svg {
     width: var(--icon-md);
     height: var(--icon-md);
-}
-
-.sidebar-brand .brand-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sidebar-toggle {
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-}
-
-.sidebar-toggle:hover {
-    background: var(--bg-hover);
-    color: var(--text-main);
-}
-
-.sidebar-toggle svg {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    transition: transform 0.18s ease;
-}
-
-.sidebar.collapsed .sidebar-toggle svg {
-    transform: rotate(180deg);
-}
-
-/* Collapsed = icon-only rail. Labels and counts hide, icons stay tappable,
-   tooltips (title attributes) carry the names. */
-.sidebar.collapsed {
-    width: 52px;
-    padding: 10px 6px;
-}
-
-.sidebar.collapsed .sidebar-header {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    padding-bottom: 10px;
-}
-
-.sidebar.collapsed .sidebar-brand {
-    display: flex;
-    justify-content: center;
-}
-
-.sidebar.collapsed .brand-info {
-    display: none;
-}
-
-.sidebar.collapsed .sidebar-section-title,
-.sidebar.collapsed .nav-label,
-.sidebar.collapsed .badge,
-.sidebar.collapsed .storage-label,
-.sidebar.collapsed .storage-path {
-    display: none;
-}
-
-.sidebar.collapsed .sidebar-section {
-    margin-bottom: 14px;
-}
-
-.sidebar.collapsed .nav-item {
-    justify-content: center;
-    padding: 8px 0;
-}
-
-.sidebar.collapsed .sidebar-footer {
-    margin-top: auto;
-    padding: 8px 2px;
-    justify-content: center;
-}
-
-.sidebar-section {
-    margin-bottom: 18px;
-}
-
-.sidebar-section-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-    padding: 10px 10px 6px;
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 32px;
-    padding: 0 10px;
-    border-radius: var(--radius-sm);
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-weight: 500;
-    font-size: 13px;
-    line-height: var(--lh-snug);
-    cursor: pointer;
-    text-align: left;
-    transition: var(--transition);
-}
-
-.nav-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-main);
-}
-
-.nav-item.active {
-    background: var(--accent-subtle);
-    color: var(--accent-sidebar-active);
-    font-weight: 600;
-}
-
-.nav-icon {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    flex-shrink: 0;
-    opacity: 0.8;
-}
-
-/* Category glyphs are monochrome: meaning comes from the shape, and the
-   sidebar keeps exactly one accent (the active row). */
-.cat-video,
-.cat-audio,
-.cat-archive,
-.cat-document,
-.cat-image,
-.cat-other {
-    color: inherit;
-}
-
-.nav-item.active .nav-icon {
-    opacity: 1;
-    color: inherit;
-}
-
-.nav-label {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .badge {
@@ -688,67 +424,6 @@ body,
     color: var(--accent-sidebar-active);
 }
 
-.badge-success {
-    background: var(--status-success-bg);
-    color: var(--status-success-text);
-}
-
-.badge-danger {
-    background: var(--status-danger-bg);
-    color: var(--status-danger-text);
-}
-
-.status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-}
-
-.status-dot-active {
-    background: var(--status-active);
-    box-shadow: 0 0 6px var(--status-active);
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-    margin-top: auto;
-    padding: 10px;
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.storage-info {
-    overflow: hidden;
-}
-
-.storage-label {
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-.storage-path {
-    font-size: 11px;
-    font-family: var(--font-mono);
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
-}
-
-.storage-path:hover {
-    color: var(--text-main);
-}
-
 /* ==========================================================================
    Content Area & Toolbar
    ========================================================================== */
@@ -759,17 +434,6 @@ body,
     flex-direction: column;
     overflow: hidden;
     background: var(--bg-base);
-}
-
-.content-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-sidebar);
-    gap: 10px;
-    flex-shrink: 0;
 }
 
 .search-box {
@@ -838,21 +502,6 @@ body,
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-.sort-selector {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.sort-selector label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-muted);
-    white-space: nowrap;
-    user-select: none;
-    line-height: var(--lh-snug);
 }
 
 /* Custom Dropdown (Theme-Aware HTML Menu, Replaces native GTK select popup) */
@@ -1078,42 +727,6 @@ body,
     margin-bottom: 20px;
 }
 
-/* ==========================================================================
-   Download Card (Clean, Simple, High-Density)
-   ========================================================================== */
-
-.download-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    cursor: pointer;
-    transition: var(--transition);
-    box-shadow: var(--shadow-card);
-}
-
-.download-card:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--border-hover);
-}
-
-[data-theme="light"] .download-card:hover {
-    box-shadow: 0 4px 14px rgba(58, 52, 96, 0.14);
-}
-
-.download-card.card-active {
-    border-color: var(--border-active);
-}
-
-.card-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .file-type-icon {
     width: 32px;
     height: 32px;
@@ -1130,22 +743,6 @@ body,
 .file-type-icon svg {
     width: 16px;
     height: 16px;
-}
-
-.card-title-group {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.file-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    overflow: hidden;
 }
 
 .file-name {
@@ -1209,11 +806,6 @@ body,
     flex-shrink: 0;
 }
 
-/* The in-progress card already renders a live dot in its markup. */
-.status-pill .status-dot {
-    display: none;
-}
-
 .status-pill.status-in_progress {
     color: var(--status-active-text);
 }
@@ -1239,13 +831,6 @@ body,
     color: var(--text-dim);
 }
 
-/* Progress Bar */
-.progress-container {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .progress-track {
     height: 6px;
     background: var(--progress-track);
@@ -1265,100 +850,21 @@ body,
 }
 
 /* Progress carries the outcome colour, so a finished row does not look live. */
-.download-card.status-completed .progress-fill {
+.download-row.status-completed .progress-fill {
     background: var(--status-success);
 }
 
-.download-card.status-paused .progress-fill {
+.download-row.status-paused .progress-fill {
     background: var(--status-warning);
 }
 
-.download-card.status-failed .progress-fill {
+.download-row.status-failed .progress-fill {
     background: var(--status-danger);
 }
 
-.download-card.status-queued .progress-fill,
-.download-card.status-scheduled .progress-fill {
+.download-row.status-queued .progress-fill,
+.download-row.status-scheduled .progress-fill {
     background: var(--text-disabled);
-}
-
-/* Card Footer */
-.card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.card-metrics {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    flex-wrap: wrap;
-}
-
-.metric-divider {
-    color: var(--text-dim);
-    margin: 0 1px;
-}
-
-.metric-speed {
-    color: var(--metric-speed);
-    font-weight: 600;
-}
-
-.metric-size {
-    font-weight: 500;
-}
-
-.metric-percent {
-    order: -1;
-    color: var(--text-main);
-    font-weight: 600;
-}
-
-.metric-eta {
-    color: var(--metric-eta);
-    font-weight: 500;
-}
-
-.metric-checksum {
-    font-size: 11px;
-}
-.metric-checksum.verified {
-    color: var(--status-success);
-}
-.metric-checksum.mismatch {
-    color: var(--status-danger);
-}
-
-.card-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-}
-
-.card-actions [data-action="delete"]:hover {
-    color: var(--status-danger-text);
-    background: var(--status-danger-bg);
-}
-
-.card-error-box {
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-    background: var(--status-danger-bg);
-    font-size: 12px;
-    line-height: var(--lh-snug);
-    color: var(--status-danger-text);
-    word-break: break-all;
-    user-select: text;
-    cursor: text;
 }
 
 /* ==========================================================================
@@ -1856,8 +1362,12 @@ body,
     min-height: 44px;
 }
 
-.setting-item > .btn {
-    justify-self: start;
+/* Compact controls sit on the same right edge as the sliders/inputs. */
+.setting-item > .btn,
+.setting-item > .custom-dropdown,
+.setting-item > input[type="checkbox"],
+.setting-item > .input-compact {
+    justify-self: end;
 }
 
 .setting-text {
@@ -2197,24 +1707,36 @@ input[type="checkbox"]:focus-visible {
     text-overflow: ellipsis;
 }
 
+.dlw-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+}
+
 .dlw-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px 20px;
+    gap: 14px 20px;
 }
 
 .dlw-stat,
 .dlw-field {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
 }
 
 .dlw-paths {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 560px) {
@@ -2224,9 +1746,11 @@ input[type="checkbox"]:focus-visible {
 }
 
 .dlw-label {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     line-height: var(--lh-snug);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     color: var(--text-dim);
 }
 
@@ -2236,6 +1760,7 @@ input[type="checkbox"]:focus-visible {
     white-space: nowrap;
     text-overflow: ellipsis;
     font-size: 13px;
+    font-weight: 500;
     line-height: var(--lh-snug);
     color: var(--text-main);
 }
@@ -2248,12 +1773,53 @@ input[type="checkbox"]:focus-visible {
     cursor: text;
 }
 
+.dlw-paths .dlw-value.mono {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
 .dlw-value .status-pill {
     width: fit-content;
 }
 
 .dlw-progress {
     flex-shrink: 0;
+}
+
+/* Progress and connection fills follow the outcome colour, matching the
+   main table (completed = green, failed = red, paused = amber). */
+.dlw-body[data-status="completed"] .dlw-progress .progress-fill,
+.dlw-body[data-status="completed"] .dlw-seg-fill {
+    background: var(--status-success);
+}
+
+.dlw-body[data-status="paused"] .dlw-progress .progress-fill,
+.dlw-body[data-status="paused"] .dlw-seg-fill {
+    background: var(--status-warning);
+}
+
+.dlw-body[data-status="failed"] .dlw-progress .progress-fill,
+.dlw-body[data-status="failed"] .dlw-seg-fill {
+    background: var(--status-danger);
+}
+
+.dlw-body[data-status="queued"] .dlw-progress .progress-fill,
+.dlw-body[data-status="scheduled"] .dlw-progress .progress-fill,
+.dlw-body[data-status="cancelled"] .dlw-progress .progress-fill {
+    background: var(--text-disabled);
+}
+
+.dlw-error {
+    padding: 9px 12px;
+    border: 1px solid var(--status-danger-bg);
+    border-radius: var(--radius-sm);
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
+    font-size: 12px;
+    line-height: var(--lh-snug);
+    overflow-wrap: anywhere;
 }
 
 .dlw-controls {
@@ -2268,7 +1834,7 @@ input[type="checkbox"]:focus-visible {
 .dlw-controls-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
@@ -2279,8 +1845,11 @@ input[type="checkbox"]:focus-visible {
 }
 
 .dlw-caption {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-dim);
     text-align: left;
 }
 
@@ -2352,6 +1921,14 @@ input[type="checkbox"]:focus-visible {
     color: var(--status-success-text);
 }
 
+.dlw-conn-status.is-failed {
+    color: var(--status-danger-text);
+}
+
+.dlw-conn-status.is-paused {
+    color: var(--status-warning-text);
+}
+
 .dlw-footer {
     margin-top: auto;
     display: flex;
@@ -2367,3 +1944,446 @@ input[type="checkbox"]:focus-visible {
     color: var(--text-muted);
 }
 
+
+/* ==========================================================================
+   Option A layout — command bar, filter bar, downloads table, status bar
+   ========================================================================== */
+
+.commandbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-height: 60px;
+    padding: 10px 18px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.commandbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.commandbar-brand .brand-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+}
+
+.commandbar-brand .brand-icon svg {
+    width: var(--icon-md);
+    height: var(--icon-md);
+}
+
+.commandbar-brand .brand-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+}
+
+.commandbar .search-box {
+    flex: 1 1 320px;
+    max-width: 560px;
+    min-width: 180px;
+    margin-left: 6px;
+}
+
+.commandbar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.commandbar #label-pause-all {
+    display: inline;
+}
+
+.commandbar #btn-pause-all {
+    width: auto;
+    padding: 0 12px;
+}
+
+.filterbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-base);
+}
+
+.status-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+}
+
+.status-filter {
+    height: 28px;
+    padding: 0 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-muted);
+    font: 500 11px/1 var(--font-sans);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.status-filter:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.status-filter.active {
+    background: var(--bg-card);
+    color: var(--text-main);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.filter-count {
+    min-width: 18px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--badge-bg);
+    color: var(--text-dim);
+    font: 500 10px/1.4 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.status-filter.active .filter-count {
+    background: var(--accent-subtle);
+    color: var(--accent-sidebar-active);
+}
+
+.filterbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.filter-chip {
+    height: 28px;
+    padding: 0 9px;
+    border-radius: var(--radius-xs);
+    font-size: 11px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    gap: 6px;
+}
+
+.filter-chip:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    color: var(--text-main);
+}
+
+.filter-chip .filter-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--text-dim);
+}
+
+.filter-chip .custom-dropdown-chevron {
+    width: 12px;
+    height: 12px;
+}
+
+.content-area .downloads-table {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-head,
+.download-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.6fr) 110px 82px minmax(150px, 1fr) 130px 150px;
+    gap: 12px;
+    align-items: center;
+    padding: 0 18px;
+}
+
+.table-head {
+    flex-shrink: 0;
+    height: 36px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.downloads-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.download-row {
+    min-height: 58px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.download-row:hover {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.row-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.row-name .file-type-icon {
+    flex-shrink: 0;
+}
+
+.namewrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.download-row .file-name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    letter-spacing: -0.005em;
+}
+
+.row-status {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.row-status .status-pill {
+    font-size: 10px;
+}
+
+.row-size {
+    color: var(--text-muted);
+    font: 400 12px/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.row-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.row-progress .progress-track {
+    flex: 1;
+    height: 6px;
+}
+
+.row-percent {
+    min-width: 34px;
+    text-align: right;
+    color: var(--text-main);
+    font: 600 11px/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.row-speed {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+}
+
+.row-speed-main {
+    color: var(--metric-speed);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.row-speed-sub,
+.row-speed-note {
+    color: var(--text-dim);
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-checksum {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.row-checksum.ok {
+    color: var(--status-success-text);
+}
+
+.row-checksum.bad {
+    color: var(--status-danger-text);
+}
+
+.row-error {
+    display: block;
+    overflow: hidden;
+    color: var(--status-danger-text);
+    font-size: 10px;
+    text-overflow: ellipsis;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.row-actions .btn {
+    flex-shrink: 0;
+}
+
+.row-actions .row-danger:hover {
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
+}
+
+.statusbar {
+    flex-shrink: 0;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 18px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-sidebar);
+    color: var(--text-dim);
+    font: 400 11px/1 var(--font-mono);
+    white-space: nowrap;
+}
+
+.status-metric {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+}
+
+.status-metric .metric-icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    color: var(--text-dim);
+}
+
+.status-metric .metric-value {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.status-spacer {
+    flex: 1;
+}
+
+.status-folder {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.status-folder:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.status-folder svg {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+}
+
+#status-totals {
+    color: var(--text-muted);
+}
+
+@media (max-width: 1100px) {
+    .table-head,
+    .download-row {
+        grid-template-columns: minmax(200px, 1.5fr) 100px minmax(130px, 1fr) 120px 150px;
+    }
+    .col-size,
+    .row-size {
+        display: none;
+    }
+    .commandbar #label-pause-all {
+        display: none;
+    }
+    .commandbar #btn-pause-all {
+        width: var(--control-h);
+        padding: 0;
+    }
+}
+
+@media (max-width: 900px) {
+    .table-head,
+    .download-row {
+        grid-template-columns: minmax(180px, 1fr) 100px minmax(120px, 1fr) 150px;
+    }
+    .col-speed,
+    .row-speed {
+        display: none;
+    }
+    .commandbar .search-box {
+        flex-basis: 180px;
+    }
+}
+
+@media (max-width: 720px) {
+    .table-head,
+    .download-row {
+        grid-template-columns: minmax(160px, 1fr) minmax(120px, 1fr) 150px;
+    }
+    .row-status,
+    .table-head span:nth-child(2) {
+        display: none;
+    }
+}

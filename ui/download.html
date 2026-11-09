@@ -42,60 +42,75 @@
             <div class="progress-fill" id="dlw-progress"></div>
         </div>
 
-        <section class="dlw-summary" aria-label="Download summary">
-            <div class="dlw-stat">
-                <span class="dlw-label">Status</span>
-                <span class="dlw-value"><span class="status-pill status-queued" id="dlw-status-pill"><span id="dlw-status">Queued</span></span></span>
-            </div>
-            <div class="dlw-stat">
-                <span class="dlw-label">File size</span>
-                <span class="dlw-value" id="dlw-size">—</span>
-            </div>
-            <div class="dlw-stat">
-                <span class="dlw-label">Downloaded</span>
-                <span class="dlw-value" id="dlw-downloaded">—</span>
-            </div>
-            <div class="dlw-stat">
-                <span class="dlw-label">Transfer rate</span>
-                <span class="dlw-value" id="dlw-rate">—</span>
-            </div>
-            <div class="dlw-stat">
-                <span class="dlw-label">Time left</span>
-                <span class="dlw-value" id="dlw-eta">—</span>
-            </div>
-            <div class="dlw-stat">
-                <span class="dlw-label">Resume support</span>
-                <span class="dlw-value" id="dlw-resumable">—</span>
-            </div>
-        </section>
+        <div class="dlw-overview">
+            <section class="dlw-summary" aria-label="Download summary">
+                <div class="dlw-stat" data-tile="status">
+                    <span class="dlw-label">Status</span>
+                    <span class="dlw-value"><span class="status-pill status-queued" id="dlw-status-pill"><span id="dlw-status">Queued</span></span></span>
+                </div>
+                <div class="dlw-stat" data-tile="size">
+                    <span class="dlw-label">File size</span>
+                    <span class="dlw-value" id="dlw-size">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="downloaded">
+                    <span class="dlw-label">Downloaded</span>
+                    <span class="dlw-value" id="dlw-downloaded">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="rate">
+                    <span class="dlw-label">Transfer rate</span>
+                    <span class="dlw-value" id="dlw-rate">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="eta">
+                    <span class="dlw-label">Time left</span>
+                    <span class="dlw-value" id="dlw-eta">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="resumable">
+                    <span class="dlw-label">Resume support</span>
+                    <span class="dlw-value" id="dlw-resumable">—</span>
+                </div>
+            </section>
 
-        <section class="dlw-paths" aria-label="Download locations">
-            <div class="dlw-field">
-                <span class="dlw-label">URL</span>
-                <span class="dlw-value mono" id="dlw-url">—</span>
-            </div>
-            <div class="dlw-field">
-                <span class="dlw-label">Save to</span>
-                <span class="dlw-value mono" id="dlw-path">—</span>
-            </div>
-        </section>
+            <section class="dlw-paths" aria-label="Download locations">
+                <div class="dlw-field">
+                    <span class="dlw-label">URL</span>
+                    <span class="dlw-value mono" id="dlw-url">—</span>
+                </div>
+                <div class="dlw-field">
+                    <span class="dlw-label">Save to</span>
+                    <span class="dlw-value mono" id="dlw-path">—</span>
+                </div>
+            </section>
+        </div>
+
+        <div id="dlw-error" class="dlw-error" role="alert" hidden></div>
 
         <div class="dlw-controls">
             <div class="dlw-controls-left">
                 <button id="dlw-toggle-details" class="btn btn-secondary btn-sm" aria-expanded="true" aria-controls="dlw-connections">Hide details</button>
-                <label class="checkbox-label">
+                <label class="checkbox-label" id="dlw-close-when-done-label">
                     <input type="checkbox" id="dlw-close-when-done">
                     <span>Close when completed</span>
                 </label>
             </div>
             <div class="dlw-controls-right">
+                <button id="dlw-open-file" class="btn btn-primary" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Open file
+                </button>
+                <button id="dlw-open-folder" class="btn btn-secondary" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+                    Open folder
+                </button>
                 <button id="dlw-pause" class="btn btn-secondary">Pause</button>
-                <button id="dlw-cancel" class="btn btn-danger">Cancel download</button>
+                <button id="dlw-cancel" class="btn btn-danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                    Cancel download
+                </button>
             </div>
         </div>
 
         <section id="dlw-connections" class="dlw-connections" aria-label="Connection details">
-            <p class="dlw-caption">Start positions and download progress by connections</p>
+            <p class="dlw-caption" title="Start positions and download progress by connection">Connections</p>
             <div class="dlw-segbar" id="dlw-segbar" aria-hidden="true"></div>
             <table class="dlw-table">
                 <thead>

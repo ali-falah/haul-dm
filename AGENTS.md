@@ -40,7 +40,7 @@ Focused verification (no full production builds — `cargo check` only):
 
 ## Frontend conventions (Iris design system, `ui/styles.css`)
 
-- Tokens live in `:root` / `[data-theme="light"]`: iris accent `#7b74e0` family; radius
+- Tokens live in `:root` / `[data-theme="light"]`: harbor-teal accent `#0F766E` / `#2DD4BF`; radius
   `--radius-xs 6px / sm 8px / md 12px / lg 16px` (+ `999px` pills). Spacing scale 2/4/8/12/16px;
   type scale only `10/11/12/13/14px`. Use tokens, never new raw values.
 - Fonts are **bundled** in `ui/fonts/` (`@font-face` for Inter 400/500/600 and JetBrains Mono
@@ -49,16 +49,23 @@ Focused verification (no full production builds — `cargo check` only):
   (smaller sizes render sub-pixel strokes). Control heights are `--control-h-sm: 28px` / `--control-h: 32px`.
 - Filled buttons use `--accent-solid` / `--danger-solid` (white text passes AA); `--accent` is for
   active text/progress, not filled buttons. Toasts anchor bottom-right.
-- Download cards prepend the percentage in the metrics row and use a quiet status dot + label (not
-  filled chips); progress fill colour follows status via the `status-<state>` class on the card.
-- The toolbar stays on one row: below 1400px it hides secondary labels/kbd hints, below 1100px it
-  hides the sort label and queue pill, below 900px actions left-align on the wrapped row.
+- App icon source: `src-tauri/icons/icon.svg` (teal H + download arrow). Rasterized PNGs are committed;
+  regenerate with `magick -background none icon.svg -resize NxN PNG32:NxN.png`. The tray icon stays a
+  simple monochrome download glyph for legibility at 16px.
+- Main window layout is **command bar → filter bar → dense downloads table → status bar** (no sidebar).
+  Status filters are `.status-filters [data-filter]`; category filtering is a custom dropdown backed by
+  the hidden `#category-select`; sorting stays a custom dropdown backed by `#sort-select`.
+- Rows use `.download-row` (grid columns Name/Status/Size/Progress/Speed/Actions) and keep
+  `data-download-id` + `status-<state>`; progress fill colour follows status. Row filenames are
+  keyboard-activatable (`role="button"`, Enter/Space) since the row itself is mouse-only.
+- Responsive table: below 1100px the Size column and Pause-All label drop, below 900px the speed
+  column drops, below 720px the status column drops. The filter bar wraps before the table does.
 - Sticky failure toasts are `role="alert"` and carry an explicit dismiss button; all toasts are
-  announced (`status`/`alert`, `aria-atomic`). Card filenames are keyboard-activatable
-  (`role="button"`, Enter/Space) since the card row itself is mouse-only.
+  announced (`status`/`alert`, `aria-atomic`).
 - `[hidden] { display: none !important; }` guard exists — toggle via `element.hidden`, never inline styles.
-- Dynamic markup is JS-rendered (`renderDownloadCard`) — classes `metric-speed-wrapper`,
-  `metric-eta-wrapper`, `empty-state-new-btn` are querySelector hooks, intentionally unstyled.
+- Dynamic markup is JS-rendered (`renderDownloadCard` now returns a table row) — `data-action`,
+  `data-download-id`, `.row-percent`, `.row-size`, `.row-speed` and `.empty-state-new-btn` are
+  behavioral hooks; keep them in sync with `ui/main.js`.
 - Focus/UX infrastructure in `ui/main.js`: `showModal`/`hideModal` capture+restore focus, `trapModalTab`
   traps Tab in the topmost dialog, Esc closes topmost via `MODAL_STACK` (browser-download confirm is
   deliberately excluded — explicit Cancel only). Completed/failed downloads summon the window at full
@@ -74,9 +81,13 @@ Focused verification (no full production builds — `cargo check` only):
 - The window reads live data via `download_details` (record + per-connection rows computed from
   the segment manifest files, polled ~1s) and reacts instantly to `download://state` events.
   `ui/download.js` is standalone (helpers mirror `ui/main.js`).
-- Window layout order: title + percent header → progress bar → summary tiles (status/size/rate/ETA/
-  resume) → URL + save path → controls → connection table. Keep IDs when editing the markup;
+- Window layout order: title + percent header → progress bar → overview panel (summary tiles +
+  URL/save path) → error banner → controls → connection table. Keep IDs when editing the markup;
   `download.js` writes values by ID.
+- Controls are status-aware: completed shows **Open file / Open folder**, failed shows **Retry / Open
+  folder**, active/paused shows **Pause|Resume / Cancel / Open folder**; terminal states hide
+  "Close when completed" and the live rate/ETA tiles. Progress and connection fills follow status
+  (green completed, amber paused, red failed).
 - Capability `windows` includes `download-*`; permissions include `core:window:allow-close`,
   `core:window:allow-minimize` and `core:window:allow-start-dragging` for the in-page window chrome.
 - Download windows are **undecorated** (`decorations(false)`): the header is dragged via
