@@ -50,6 +50,32 @@ Focused verification (no full production builds — `cargo check` only):
   traps Tab in the topmost dialog, Esc closes topmost via `MODAL_STACK` (browser-download confirm is
   deliberately excluded — explicit Cancel only). Completed/failed downloads summon the window at full
   force (see `nudge_result_window`) — do not soften this behavior.
+
+## Per-download windows (`src-tauri/src/download_window.rs` + `ui/download.html`)
+
+- One OS window per download, label `download-<id>`; open/focus/unminimize are idempotent.
+  Clicking a row in the main list calls the `open_download_window` command; closing a download
+  window must never cancel/pause the download (no close hooks exist — keep it that way).
+- Auto-open happens in `start_download_task` only when `QueuedDownload.auto_open_window` is true.
+  Restart restore sets it false by design — windows must not reopen on launch.
+- The window reads live data via `download_details` (record + per-connection rows computed from
+  the segment manifest files, polled ~1s) and reacts instantly to `download://state` events.
+  `ui/download.js` is standalone (helpers mirror `ui/main.js`).
+- Capability `windows` includes `download-*`; permissions include `core:window:allow-close`,
+  `core:window:allow-minimize` and `core:window:allow-start-dragging` for the in-page window chrome.
+- Download windows are **undecorated** (`decorations(false)`): the header is dragged via
+  `getCurrentWindow().startDragging()` in `download.js` (mousedown on the header, button clicks
+  excluded) and carries its own minimize/close buttons. Do not re-enable native decorations
+  without removing those buttons.
+- Connections per download is a real user setting: `connections_per_download` (1–16, default 4) in
+  Settings → persisted via `AppState`/`app_settings`, capped by file size in `determine_segment_count`.
+- Resume support is persisted per download (`downloads.resumable` column, additive migration in
+  `Storage::open`; written at creation and refreshed on resume).
+- Result summon is conditional: completed/failed only force the main window when that download's
+  window is missing, hidden or minimized (`is_download_window_visible`). When the window is visible
+  the result is already on screen, so the main window is not stolen. With
+  "Close when completed" checked the page calls the `focus_main_window` command before closing,
+  so the completion still raises the main window.
 - No inline `onclick=` handlers anywhere.
 
 ## Conventions — `CODE-INSTRUCTIONS.txt` is binding

@@ -479,6 +479,17 @@
 
                     <div class="setting-item">
                         <div class="setting-text">
+                            <div class="setting-name">Connections per Download</div>
+                            <div class="setting-desc">Parallel connections per download — applies to new downloads (1–16)</div>
+                        </div>
+                        <div class="stepper-input">
+                            <input type="range" id="settings-connections" min="1" max="16" value="4">
+                            <span class="range-value" id="connections-display">4</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-text">
                             <div class="setting-name">Default Bandwidth Limit</div>
                             <div class="setting-desc">Global speed cap per download in KB/s (0 = unlimited)</div>
                         </div>

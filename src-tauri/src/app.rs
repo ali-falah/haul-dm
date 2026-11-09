@@ -51,6 +51,9 @@ pub struct QueuedDownload {
     pub format: Option<String>,
     pub force_ytdlp: bool,
     pub stream_manifest: bool,
+    /// Open the dedicated download window when this task starts.
+    /// False for restart-restore, so windows never auto-reopen.
+    pub auto_open_window: bool,
     pub target_path: PathBuf,
     pub resumable_hint: bool,
     pub total_bytes_hint: Option<u64>,
@@ -65,6 +68,7 @@ pub struct AppState {
     pub app_data_dir: PathBuf,
     default_download_dir: RwLock<PathBuf>,
     max_concurrent_downloads: AtomicUsize,
+    connections_per_download: AtomicUsize,
     default_bandwidth_limit_kbps: AtomicU64,
     queue: Mutex<DownloadQueueState>,
     pub live_metrics: Mutex<HashMap<i64, (u64, Option<u64>)>>,
@@ -106,6 +110,14 @@ impl AppState {
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(3);
 
+        let connections_per_download = storage
+            .get_setting("connections_per_download")
+            .ok()
+            .flatten()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(4)
+            .clamp(1, 16);
+
         let default_bandwidth = storage
             .get_setting("default_bandwidth_limit_kbps")
             .ok()
@@ -124,6 +136,7 @@ impl AppState {
             app_data_dir,
             default_download_dir: RwLock::new(default_download_dir),
             max_concurrent_downloads: AtomicUsize::new(max_concurrent),
+            connections_per_download: AtomicUsize::new(connections_per_download),
             default_bandwidth_limit_kbps: AtomicU64::new(default_bandwidth),
             queue: Mutex::new(DownloadQueueState {
                 active: HashMap::new(),
@@ -185,6 +198,16 @@ impl AppState {
         let _ = self.storage.set_setting("max_concurrent_downloads", &value.to_string());
     }
 
+    pub fn connections_per_download(&self) -> usize {
+        self.connections_per_download.load(Ordering::Relaxed)
+    }
+
+    pub fn set_connections_per_download(&self, value: usize) {
+        let value = value.clamp(1, 16);
+        self.connections_per_download.store(value, Ordering::Relaxed);
+        let _ = self.storage.set_setting("connections_per_download", &value.to_string());
+    }
+
     pub fn default_bandwidth_limit_kbps(&self) -> Option<u64> {
         let value = self.default_bandwidth_limit_kbps.load(Ordering::Relaxed);
         if value == 0 { None } else { Some(value) }
@@ -233,6 +256,7 @@ impl AppState {
                     stream_manifest: false,
                     resumable_hint: record.downloaded_bytes > 0,
                     total_bytes_hint: record.total_bytes,
+                    auto_open_window: false,
                     expected_checksum: record.expected_checksum,
                     scheduled_at: record.scheduled_at,
                     bandwidth_limit_kbps: record.bandwidth_limit_kbps,
@@ -518,11 +542,19 @@ fn start_download_task(
     job: QueuedDownload,
     state: &AppState,
 ) -> JoinHandle<()> {
+    if job.auto_open_window {
+        let file_name = job
+            .target_path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string());
+        let _ = crate::download_window::open_download_window(&app_handle, job.id, file_name);
+    }
     let download_service = state.download_service.clone();
     let storage = state.storage.clone_for_task();
+    let connections_per_download = state.connections_per_download();
 
     tauri::async_runtime::spawn(async move {
-        let result = run_download(&app_handle, &download_service, &storage, job).await;
+        let result = run_download(&app_handle, &download_service, &storage, job, connections_per_download).await;
         if let Err(error) = result {
             eprintln!("download task failed: {error}");
         }
@@ -536,6 +568,7 @@ async fn run_download(
     download_service: &DownloadService,
     storage: &Storage,
     job: QueuedDownload,
+    connections_per_download: usize,
 ) -> Result<(), String> {
     let total_hint = job.total_bytes_hint;
     let requested_resume_from = download_service
@@ -657,6 +690,7 @@ async fn run_download(
                 job.resumable_hint,
                 job.total_bytes_hint,
                 job.bandwidth_limit_kbps,
+                connections_per_download,
                 job.source_page_url.as_deref(),
                 &job.http_headers,
                 job.format.as_deref(),
@@ -712,18 +746,31 @@ async fn run_download(
                 "Download completed",
                 format!("{} download completed.", job.target_path.file_name().unwrap_or_default().to_string_lossy()),
             );
-            // User request: completed downloads get the same in-your-face
-            // summon as failures and the browser-download confirm.
-            nudge_result_window(app_handle);
+            // In-your-face result signal: skipped when the download's own
+            // window is showing it already (closed/minimized → summon main).
+            if !crate::download_window::is_download_window_visible(app_handle, job.id) {
+                nudge_result_window(app_handle);
+            }
         }
         Err(error) => {
-            storage.set_status(job.id, "failed", 0, total_hint, Some(&error))?;
+            // Keep the bytes that actually reached disk; resetting to 0 made a
+            // failed download look like it never started and threw away the
+            // resume point in the UI.
+            let actual_bytes = download_service
+                .current_downloaded_bytes(&job.target_path)
+                .await;
+            let failed_bytes = storage
+                .get_download(job.id)
+                .map(|record| record.downloaded_bytes)
+                .unwrap_or(0)
+                .max(actual_bytes);
+            storage.set_status(job.id, "failed", failed_bytes, total_hint, Some(&error))?;
             let state = app_handle.state::<AppState>();
             state.emit_download_event(
                 app_handle,
                 job.id,
                 "failed",
-                0,
+                failed_bytes,
                 total_hint,
                 None,
                 None,
@@ -735,7 +782,9 @@ async fn run_download(
                 "Download failed",
                 format!("Download failed: {error}"),
             );
-            nudge_result_window(app_handle);
+            if !crate::download_window::is_download_window_visible(app_handle, job.id) {
+                nudge_result_window(app_handle);
+            }
         }
     }
 

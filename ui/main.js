@@ -168,6 +168,20 @@ function initEventListeners() {
     // Collapsible sidebar (collapsed by default)
     initSidebarCollapse();
 
+    // Clicking a download row opens (or re-focuses) its dedicated window.
+    // Action buttons inside the card keep their own handlers.
+    document.getElementById("downloads-container").addEventListener("click", (event) => {
+        if (event.target.closest("button, a, input, [data-action]")) return;
+        const card = event.target.closest(".download-card");
+        if (!card) return;
+        const id = Number(card.dataset.downloadId);
+        if (!Number.isFinite(id)) return;
+        const download = allDownloads.find((item) => item.id === id);
+        invoke("open_download_window", { id, fileName: download?.fileName ?? null }).catch((error) => {
+            console.error("Could not open download window:", error);
+        });
+    });
+
     // Sidebar status filters
     document.querySelectorAll(".sidebar-nav [data-filter]").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -272,6 +286,9 @@ function initEventListeners() {
     });
     document.getElementById("settings-max-concurrent").addEventListener("input", (e) => {
         document.getElementById("concurrent-display").textContent = e.target.value;
+    });
+    document.getElementById("settings-connections").addEventListener("input", (e) => {
+        document.getElementById("connections-display").textContent = e.target.value;
     });
     document.querySelectorAll("[data-extension-tab]").forEach((tab) => tab.addEventListener("click", () => {
         document.querySelectorAll("[data-extension-tab]").forEach((item) => item.classList.toggle("active", item === tab));
@@ -978,6 +995,8 @@ async function loadSettings() {
             document.getElementById("sidebar-download-dir").textContent = appSettings.defaultDownloadDir || "~/Downloads";
             document.getElementById("settings-max-concurrent").value = appSettings.maxConcurrentDownloads || 3;
             document.getElementById("concurrent-display").textContent = appSettings.maxConcurrentDownloads || 3;
+            document.getElementById("settings-connections").value = appSettings.connectionsPerDownload || 4;
+            document.getElementById("connections-display").textContent = appSettings.connectionsPerDownload || 4;
             document.getElementById("settings-bandwidth-limit").value = appSettings.defaultBandwidthLimitKbps || "";
             document.getElementById("settings-ask-browser-location").checked = appSettings.askBrowserDownloadLocation !== false;
             renderHiddenSites();
@@ -1041,10 +1060,12 @@ async function updateHiddenSites(hiddenSites) {
 
 async function saveSettings() {
     const maxConcurrent = parseInt(document.getElementById("settings-max-concurrent").value);
+    const connections = parseInt(document.getElementById("settings-connections").value);
     const bandwidthLimit = parseInt(document.getElementById("settings-bandwidth-limit").value) || 0;
 
     const args = {
         maxConcurrentDownloads: maxConcurrent,
+        connectionsPerDownload: connections,
         defaultBandwidthLimitKbps: bandwidthLimit,
         askBrowserDownloadLocation: document.getElementById("settings-ask-browser-location").checked,
     };

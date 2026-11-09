@@ -20,8 +20,9 @@ use tokio::sync::Mutex as AsyncMutex;
 use tokio::sync::mpsc;
 
 const SEGMENT_THRESHOLD_BYTES: u64 = 8 * 1024 * 1024;
+/// Resume a dropped segment stream instead of failing the whole download.
+const SEGMENT_RETRY_ATTEMPTS: u32 = 3;
 #[allow(dead_code)]
-const MAX_SEGMENTS: usize = 4;
 
 struct AbortOnDrop(Vec<tokio::task::AbortHandle>);
 
@@ -99,6 +100,7 @@ pub struct DownloadRecord {
     pub bandwidth_limit_kbps: Option<u64>,
     pub speed_bytes_per_second: Option<u64>,
     pub eta_seconds: Option<u64>,
+    pub resumable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,6 +312,7 @@ impl DownloadService {
         resumable_hint: bool,
         total_bytes_hint: Option<u64>,
         bandwidth_limit_kbps: Option<u64>,
+        connections: usize,
         source_page_url: Option<&str>,
         http_headers: &HashMap<String, String>,
         format: Option<&str>,
@@ -401,7 +404,7 @@ impl DownloadService {
             && requested_resume_from == 0
             && total_bytes_hint.unwrap_or(0) >= SEGMENT_THRESHOLD_BYTES
         {
-            let manifest = build_segment_manifest(total_bytes_hint.unwrap_or(0));
+            let manifest = build_segment_manifest(total_bytes_hint.unwrap_or(0), connections);
             return self
                 .download_with_segments(
                     &url,
@@ -1017,50 +1020,80 @@ impl DownloadService {
             let throttle = throttle.clone();
 
             let handle = tokio::spawn(async move {
-                let mut request = client.get(url.as_str());
-                request = request.header(RANGE, format!("bytes={start}-{end}"));
-
-                let response = request
-                    .send()
-                    .await
-                    .map_err(|error| format!("segment download failed: {error}"))?;
-
-                if !response.status().is_success() && response.status().as_u16() != 206 {
-                    return Err(format!(
-                        "segment download returned unexpected status: {}",
-                        response.status()
-                    ));
-                }
-
-                let is_partial = response.status().as_u16() == 206;
-                let mut file = if is_partial && downloaded_so_far > 0 {
-                    fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(&seg_path)
-                        .await
-                        .map_err(|error| format!("failed to open segment file: {error}"))?
-                } else {
-                    fs::File::create(&seg_path)
-                        .await
-                        .map_err(|error| format!("failed to create segment file: {error}"))?
-                };
-
-                let mut stream = response.bytes_stream();
-                while let Some(chunk) = stream.next().await {
-                    let chunk =
-                        chunk.map_err(|error| format!("segment stream error: {error}"))?;
-                    if let Some(ref throttle) = throttle {
-                        throttle.acquire(chunk.len() as u64).await;
+                let mut written = 0u64;
+                let mut attempts = 0u32;
+                loop {
+                    let range_start = start + written;
+                    if range_start > end {
+                        break;
                     }
-                    file.write_all(&chunk)
+
+                    let mut request = client.get(url.as_str());
+                    request = request.header(RANGE, format!("bytes={range_start}-{end}"));
+
+                    let response = match request.send().await {
+                        Ok(response) => response,
+                        Err(_error) if attempts < SEGMENT_RETRY_ATTEMPTS => {
+                            attempts += 1;
+                            tokio::time::sleep(Duration::from_millis(500 * u64::from(attempts))).await;
+                            continue;
+                        }
+                        Err(error) => return Err(format!("segment download failed: {error}")),
+                    };
+
+                    if !response.status().is_success() && response.status().as_u16() != 206 {
+                        return Err(format!(
+                            "segment download returned unexpected status: {}",
+                            response.status()
+                        ));
+                    }
+
+                    let is_partial = response.status().as_u16() == 206;
+                    let mut file = if is_partial && (downloaded_so_far + written) > 0 {
+                        fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&seg_path)
+                            .await
+                            .map_err(|error| format!("failed to open segment file: {error}"))?
+                    } else {
+                        fs::File::create(&seg_path)
+                            .await
+                            .map_err(|error| format!("failed to create segment file: {error}"))?
+                    };
+
+                    let mut stream = response.bytes_stream();
+                    let mut stream_error = None;
+                    while let Some(chunk) = stream.next().await {
+                        let chunk = match chunk {
+                            Ok(chunk) => chunk,
+                            Err(error) => {
+                                stream_error = Some(error.to_string());
+                                break;
+                            }
+                        };
+                        if let Some(ref throttle) = throttle {
+                            throttle.acquire(chunk.len() as u64).await;
+                        }
+                        file.write_all(&chunk)
+                            .await
+                            .map_err(|error| format!("failed to write segment: {error}"))?;
+                        written += chunk.len() as u64;
+                        let _ = tx.send(chunk.len() as u64).await;
+                    }
+                    file.flush()
                         .await
-                        .map_err(|error| format!("failed to write segment: {error}"))?;
-                    let _ = tx.send(chunk.len() as u64).await;
+                        .map_err(|error| format!("failed to flush segment: {error}"))?;
+
+                    match stream_error {
+                        Some(_error) if attempts < SEGMENT_RETRY_ATTEMPTS => {
+                            attempts += 1;
+                            tokio::time::sleep(Duration::from_millis(500 * u64::from(attempts))).await;
+                        }
+                        Some(error) => return Err(format!("segment stream error: {error}")),
+                        None => break,
+                    }
                 }
-                file.flush()
-                    .await
-                    .map_err(|error| format!("failed to flush segment: {error}"))?;
                 Ok::<(), String>(())
             });
             segment_guard.0.push(handle.abort_handle());
@@ -1550,8 +1583,8 @@ fn ensure_ffmpeg_available() -> Result<(), String> {
         })
 }
 
-fn build_segment_manifest(total_bytes: u64) -> SegmentedDownloadManifest {
-    let segment_count = determine_segment_count(total_bytes);
+fn build_segment_manifest(total_bytes: u64, max_connections: usize) -> SegmentedDownloadManifest {
+    let segment_count = determine_segment_count(total_bytes, max_connections);
     let mut segments = Vec::with_capacity(segment_count);
     let base_size = total_bytes / segment_count as u64;
     let mut start = 0_u64;
@@ -1578,14 +1611,12 @@ fn build_segment_manifest(total_bytes: u64) -> SegmentedDownloadManifest {
     }
 }
 
-fn determine_segment_count(total_bytes: u64) -> usize {
-    if total_bytes >= 128 * 1024 * 1024 {
-        4
-    } else if total_bytes >= 48 * 1024 * 1024 {
-        3
-    } else {
-        2
-    }
+fn determine_segment_count(total_bytes: u64, max_connections: usize) -> usize {
+    // Size-based capacity keeps tiny files from being over-split, while the
+    // user's configured connection count is the upper bound.
+    let by_size = (total_bytes / (16 * 1024 * 1024)).clamp(2, 16) as usize;
+    let configured = max_connections.clamp(1, 16);
+    by_size.min(configured).max(1)
 }
 
 #[cfg(test)]
@@ -1619,7 +1650,7 @@ mod tests {
         let target_path = dir.join("test_file.iso");
         let service = DownloadService::new(reqwest::Client::new());
 
-        let manifest = build_segment_manifest(1000);
+        let manifest = build_segment_manifest(1000, 4);
         service.save_segment_manifest(&target_path, &manifest).await.unwrap();
 
         // Write some bytes to segment 0 and segment 1
@@ -1638,6 +1669,192 @@ mod tests {
         let current_bytes = service.current_downloaded_bytes(&target_path).await;
         assert_eq!(current_bytes, 400, "current_downloaded_bytes must equal sum of bytes in segment files");
 
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    // Regression probe for the "18% -> 0% -> 19%" flicker: drive a real
+    // segmented download against a local range server and assert progress
+    // never moves backwards.
+    #[tokio::test]
+    async fn test_segmented_progress_is_monotonic() {
+        use std::io::{Read as _, Write as _};
+
+        let body: Vec<u8> = (0..10 * 1024 * 1024).map(|i| (i % 251) as u8).collect();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = body.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { break };
+                let mut request = [0u8; 8192];
+                let n = stream.read(&mut request).unwrap_or(0);
+                let text = String::from_utf8_lossy(&request[..n]).to_lowercase();
+                let range = text
+                    .split("range: bytes=")
+                    .nth(1)
+                    .and_then(|tail| tail.split(['\r', '\n', ' '].as_ref()).next())
+                    .and_then(|spec| {
+                        let mut parts = spec.split('-');
+                        let start = parts.next()?.parse::<usize>().ok()?;
+                        let end = parts.next().and_then(|s| s.parse::<usize>().ok());
+                        Some((start, end))
+                    });
+                let (start, end) = match range {
+                    Some((start, end)) => (start, end.unwrap_or(server.len() - 1)),
+                    None => (0, server.len() - 1),
+                };
+                let slice = &server[start..=end];
+                let status = if range.is_some() { "206 Partial Content" } else { "200 OK" };
+                let head = format!(
+                    "HTTP/1.1 {status}\r\nContent-Length: {}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n",
+                    slice.len()
+                );
+                let _ = stream.write_all(head.as_bytes());
+                let _ = stream.write_all(slice);
+                let _ = stream.flush();
+            }
+        });
+
+        let dir = std::env::temp_dir().join(format!(
+            "ldm_probe_{}",
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        let target_path = dir.join("probe.iso");
+        let service = DownloadService::new(reqwest::Client::new());
+        let progress = std::sync::Arc::new(std::sync::Mutex::new(Vec::<u64>::new()));
+
+        let started_progress = progress.clone();
+        let mut on_started = move |downloaded: u64, _total: Option<u64>, _parts: usize| -> Result<(), String> {
+            started_progress.lock().unwrap().push(downloaded);
+            Ok(())
+        };
+        let tick_progress = progress.clone();
+        let mut on_progress = move |downloaded: u64, _total: Option<u64>, _parts: usize| -> Result<(), String> {
+            tick_progress.lock().unwrap().push(downloaded);
+            Ok(())
+        };
+
+        let url = format!("http://{addr}/probe.iso");
+        service
+            .download_to_path(
+                &url,
+                &target_path,
+                0,
+                true,
+                Some(body.len() as u64),
+                None,
+                4,
+                None,
+                &HashMap::new(),
+                None,
+                false,
+                false,
+                &[],
+                &mut on_started,
+                &mut on_progress,
+            )
+            .await
+            .expect("segmented download should succeed");
+
+        let samples = progress.lock().unwrap();
+        assert!(!samples.is_empty(), "expected progress callbacks");
+        let first_nonzero = samples.iter().position(|&b| b > 0);
+        if let Some(index) = first_nonzero {
+            assert!(
+                samples[index..].iter().all(|&b| b > 0),
+                "progress returned to zero after starting: {samples:?}"
+            );
+        }
+        for pair in samples.windows(2) {
+            assert!(pair[1] >= pair[0], "progress moved backwards: {samples:?}");
+        }
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    // A mirror that closes mid-body must not fail the entire download: the
+    // segment retries with a narrower Range starting where the file left off.
+    #[tokio::test]
+    async fn test_segment_retries_after_truncated_stream() {
+        use std::io::{Read as _, Write as _};
+        use std::sync::{Arc, Mutex as StdMutex};
+
+        let body: Vec<u8> = (0..10 * 1024 * 1024).map(|i| (i % 251) as u8).collect();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = body.clone();
+        let dropped = Arc::new(StdMutex::new(std::collections::HashSet::<usize>::new()));
+        let dropped_server = dropped.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { break };
+                let mut request = [0u8; 8192];
+                let n = stream.read(&mut request).unwrap_or(0);
+                let text = String::from_utf8_lossy(&request[..n]).to_lowercase();
+                let range = text
+                    .split("range: bytes=")
+                    .nth(1)
+                    .and_then(|tail| tail.split(['\r', '\n', ' '].as_ref()).next())
+                    .and_then(|spec| {
+                        let mut parts = spec.split('-');
+                        let start = parts.next()?.parse::<usize>().ok()?;
+                        let end = parts.next().and_then(|s| s.parse::<usize>().ok());
+                        Some((start, end))
+                    });
+                let (start, end) = match range {
+                    Some((start, end)) => (start, end.unwrap_or(server.len() - 1)),
+                    None => (0, server.len() - 1),
+                };
+                let slice = &server[start..=end];
+                let bucket = start * 4 / server.len();
+                let truncate = dropped_server.lock().unwrap().insert(bucket);
+                let send_len = if truncate { slice.len() * 3 / 4 } else { slice.len() };
+                let head = format!(
+                    "HTTP/1.1 206 Partial Content\r\nContent-Length: {}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n",
+                    slice.len()
+                );
+                let _ = stream.write_all(head.as_bytes());
+                let _ = stream.write_all(&slice[..send_len]);
+                let _ = stream.flush();
+            }
+        });
+
+        let dir = std::env::temp_dir().join(format!(
+            "ldm_retry_probe_{}",
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        let target_path = dir.join("retry.iso");
+        let service = DownloadService::new(reqwest::Client::new());
+
+        let mut on_started = |_downloaded: u64, _total: Option<u64>, _parts: usize| Ok(());
+        let mut on_progress = |_downloaded: u64, _total: Option<u64>, _parts: usize| Ok(());
+
+        let url = format!("http://{addr}/retry.iso");
+        service
+            .download_to_path(
+                &url,
+                &target_path,
+                0,
+                true,
+                Some(body.len() as u64),
+                None,
+                4,
+                None,
+                &HashMap::new(),
+                None,
+                false,
+                false,
+                &[],
+                &mut on_started,
+                &mut on_progress,
+            )
+            .await
+            .expect("download should recover from a dropped segment stream");
+
+        let downloaded = tokio::fs::read(&target_path).await.unwrap();
+        assert_eq!(downloaded.len(), body.len(), "merged file has the wrong size");
+        assert!(downloaded == body, "retried segments were appended at the wrong offset");
         let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 }

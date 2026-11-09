@@ -885,15 +885,6 @@ body,
     gap: 8px;
 }
 
-/* On very wide windows, center the list instead of stretching cards
-   edge-to-edge (2000px progress bars read poorly) */
-@media (min-width: 1400px) {
-    .downloads-container {
-        max-width: 1100px;
-        margin: 0 auto;
-    }
-}
-
 /* ==========================================================================
    Empty State
    ========================================================================== */
@@ -952,6 +943,7 @@ body,
     display: flex;
     flex-direction: column;
     gap: 8px;
+    cursor: pointer;
     transition: var(--transition), transform 0.15s ease;
     box-shadow: var(--shadow-card);
 }
@@ -1783,3 +1775,239 @@ input[type="checkbox"] {
     border-color: var(--border-active);
     color: var(--accent-sidebar-active);
 }
+
+/* ==========================================================================
+   Per-download window
+   ========================================================================== */
+
+.dlw-body {
+    background: var(--bg-base);
+    color: var(--text-main);
+    overflow-y: auto;
+}
+
+.dlw {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 100vh;
+    padding: 16px 18px;
+}
+
+.dlw-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: default;
+    user-select: none;
+}
+
+.dlw-window-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.dlw-winbtn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dlw-winbtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.dlw-winbtn-close:hover {
+    background: var(--status-danger-bg);
+    color: var(--status-danger);
+}
+
+.dlw-winbtn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.dlw-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.dlw-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.dlw-percent {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.dlw-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dlw-details {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 8px 14px;
+    font-size: 13px;
+}
+
+.dlw-label {
+    color: var(--text-muted);
+}
+
+.dlw-value {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-main);
+}
+
+.dlw-value.mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.dlw-value .status-pill {
+    width: fit-content;
+}
+
+.dlw-progress {
+    flex-shrink: 0;
+}
+
+.dlw-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dlw-controls-left,
+.dlw-controls-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dlw-connections {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dlw-caption {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.dlw-segbar {
+    position: relative;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--progress-track);
+    overflow: hidden;
+}
+
+.dlw-seg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 2px;
+    background: var(--bg-card-hover);
+}
+
+.dlw-seg-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.dlw-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.dlw-table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dlw-table td {
+    padding: 6px 8px;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dlw-table td:nth-child(n + 3) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.dlw-conn-status {
+    color: var(--text-muted);
+}
+
+.dlw-conn-status.is-active {
+    color: var(--status-active-text);
+}
+
+.dlw-conn-status.is-complete {
+    color: var(--status-success-text);
+}
+
+.dlw-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.dlw-note {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+

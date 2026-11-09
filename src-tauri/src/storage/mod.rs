@@ -11,6 +11,7 @@ pub struct NewDownloadRecord {
     pub expected_checksum: Option<String>,
     pub scheduled_at: Option<String>,
     pub bandwidth_limit_kbps: Option<u64>,
+    pub resumable: bool,
 }
 
 pub struct Storage {
@@ -60,6 +61,7 @@ impl Storage {
         add_column("checksum_status", "TEXT");
         add_column("scheduled_at", "TEXT");
         add_column("bandwidth_limit_kbps", "INTEGER");
+        add_column("resumable", "INTEGER NOT NULL DEFAULT 0");
 
         connection
             .execute_batch(
@@ -83,8 +85,8 @@ impl Storage {
                 "INSERT INTO downloads (
                     url, file_name, save_path, total_bytes, downloaded_bytes,
                     status, created_at, updated_at, expected_checksum,
-                    scheduled_at, bandwidth_limit_kbps
-                ) VALUES (?1, ?2, ?3, ?4, 0, 'queued', ?5, ?5, ?6, ?7, ?8)",
+                    scheduled_at, bandwidth_limit_kbps, resumable
+                ) VALUES (?1, ?2, ?3, ?4, 0, 'queued', ?5, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     record.url,
                     record.file_name,
@@ -94,6 +96,7 @@ impl Storage {
                     record.expected_checksum,
                     record.scheduled_at,
                     record.bandwidth_limit_kbps.map(|v| v as i64),
+                    if record.resumable { 1 } else { 0 },
                 ],
             )
             .map_err(|error| format!("failed to insert download record: {error}"))?;
@@ -109,7 +112,7 @@ impl Storage {
             .query_row(
                 "SELECT id, url, file_name, save_path, total_bytes, downloaded_bytes, status,
                         error_message, expected_checksum, actual_checksum, checksum_status,
-                        scheduled_at, bandwidth_limit_kbps
+                        scheduled_at, bandwidth_limit_kbps, resumable
                  FROM downloads WHERE id = ?1",
                 params![id],
                 |row| {
@@ -127,6 +130,7 @@ impl Storage {
                         checksum_status: row.get("checksum_status")?,
                         scheduled_at: row.get("scheduled_at")?,
                         bandwidth_limit_kbps: row.get::<_, Option<i64>>("bandwidth_limit_kbps")?.map(|v| v as u64),
+                        resumable: row.get::<_, i64>("resumable")? != 0,
                         speed_bytes_per_second: None,
                         eta_seconds: None,
                     })
@@ -141,7 +145,7 @@ impl Storage {
             .prepare(
                 "SELECT id, url, file_name, save_path, total_bytes, downloaded_bytes, status,
                         error_message, expected_checksum, actual_checksum, checksum_status,
-                        scheduled_at, bandwidth_limit_kbps
+                        scheduled_at, bandwidth_limit_kbps, resumable
                  FROM downloads ORDER BY id DESC",
             )
             .map_err(|error| format!("failed to prepare download list query: {error}"))?;
@@ -162,6 +166,7 @@ impl Storage {
                     checksum_status: row.get("checksum_status")?,
                     scheduled_at: row.get("scheduled_at")?,
                     bandwidth_limit_kbps: row.get::<_, Option<i64>>("bandwidth_limit_kbps")?.map(|v| v as u64),
+                    resumable: row.get::<_, i64>("resumable")? != 0,
                     speed_bytes_per_second: None,
                     eta_seconds: None,
                 })
@@ -197,6 +202,17 @@ impl Storage {
                 ],
             )
             .map_err(|error| format!("failed to update download status: {error}"))?;
+        Ok(())
+    }
+
+    pub fn set_resumable(&self, id: i64, resumable: bool) -> Result<(), String> {
+        let connection = self.connection.lock().unwrap();
+        connection
+            .execute(
+                "UPDATE downloads SET resumable = ?1 WHERE id = ?2",
+                params![if resumable { 1 } else { 0 }, id],
+            )
+            .map_err(|error| format!("failed to update resume support: {error}"))?;
         Ok(())
     }
 
@@ -243,7 +259,7 @@ impl Storage {
             .prepare(
                 "SELECT id, url, file_name, save_path, total_bytes, downloaded_bytes, status,
                         error_message, expected_checksum, actual_checksum, checksum_status,
-                        scheduled_at, bandwidth_limit_kbps
+                        scheduled_at, bandwidth_limit_kbps, resumable
                  FROM downloads WHERE status IN ('queued', 'in_progress', 'scheduled')
                  ORDER BY id ASC",
             )
@@ -265,6 +281,7 @@ impl Storage {
                     checksum_status: row.get("checksum_status")?,
                     scheduled_at: row.get("scheduled_at")?,
                     bandwidth_limit_kbps: row.get::<_, Option<i64>>("bandwidth_limit_kbps")?.map(|v| v as u64),
+                    resumable: row.get::<_, i64>("resumable")? != 0,
                     speed_bytes_per_second: None,
                     eta_seconds: None,
                 })

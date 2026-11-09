@@ -2,6 +2,7 @@ mod app;
 mod browser;
 mod commands;
 mod download;
+mod download_window;
 mod jobs;
 mod platform;
 mod single_instance;
@@ -166,7 +167,10 @@ pub fn run() {
             commands::delete_download,
             commands::open_file,
             commands::open_folder,
-            commands::open_url
+            commands::open_url,
+            commands::open_download_window,
+            commands::focus_main_window,
+            commands::download_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
