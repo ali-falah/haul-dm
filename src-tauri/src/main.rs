@@ -1,7 +1,7 @@
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if linux_download_manager::try_activate_existing_instance(&args) {
-        println!("Linux Download Manager is already running. Brought existing window to focus.");
+    if haul_dm::try_activate_existing_instance(&args) {
+        println!("Haul DM is already running. Brought existing window to focus.");
         return;
     }
 
@@ -33,5 +33,5 @@ fn main() {
         }
     }
 
-    linux_download_manager::run();
+    haul_dm::run();
 }

@@ -1,8 +1,8 @@
 const HOST_NAME = "com.eko.linuxdownloadmanager";
-const MENU_DOWNLOAD_LINK = "linux-download-manager.link";
-const MENU_DOWNLOAD_PAGE = "linux-download-manager.page";
-const MENU_DOWNLOAD_MEDIA = "linux-download-manager.media";
-const MENU_TOGGLE_SITE = "linux-download-manager.toggle-site";
+const MENU_DOWNLOAD_LINK = "haul-dm.link";
+const MENU_DOWNLOAD_PAGE = "haul-dm.page";
+const MENU_DOWNLOAD_MEDIA = "haul-dm.media";
+const MENU_TOGGLE_SITE = "haul-dm.toggle-site";
 const BADGE_COLOR = "#0e9f6e";
 const MAX_MEDIA_CANDIDATES = 12;
 const DOWNLOADABLE_EXTENSIONS = new Set([
@@ -26,11 +26,11 @@ let hiddenSitesCacheTime = 0;
 let hiddenSitesRead = null;
 
 function ensureSiteVisibilityMenu() {
-  chrome.contextMenus.update(MENU_TOGGLE_SITE, { title: "Show/hide Linux Download Manager on this site" }, () => {
+  chrome.contextMenus.update(MENU_TOGGLE_SITE, { title: "Show/hide Haul DM on this site" }, () => {
     if (!chrome.runtime.lastError) return;
     chrome.contextMenus.create({
       id: MENU_TOGGLE_SITE,
-      title: "Show/hide Linux Download Manager on this site",
+      title: "Show/hide Haul DM on this site",
       contexts: ["page"]
     }, () => void chrome.runtime.lastError);
   });
@@ -76,19 +76,19 @@ chrome.runtime.onInstalled.addListener(() => {
   ensureSiteVisibilityMenu();
   chrome.contextMenus.create({
     id: MENU_DOWNLOAD_LINK,
-    title: "Download link with Linux Download Manager",
+    title: "Download link with Haul DM",
     contexts: ["link"]
   });
 
   chrome.contextMenus.create({
     id: MENU_DOWNLOAD_PAGE,
-    title: "Download page URL with Linux Download Manager",
+    title: "Download page URL with Haul DM",
     contexts: ["page"]
   });
 
   chrome.contextMenus.create({
     id: MENU_DOWNLOAD_MEDIA,
-    title: "Download media with Linux Download Manager",
+    title: "Download media with Haul DM",
     contexts: ["video", "audio"]
   });
 });
@@ -386,7 +386,7 @@ async function interceptBrowserDownload(downloadItem) {
   const rawFilename = downloadItem.filename ? downloadItem.filename.split(/[\/\\]/).pop() : null;
 
   if (typeof downloadItem.tabId === "number" && downloadItem.tabId >= 0) {
-    notifyTab(downloadItem.tabId, "info", `Downloading ${rawFilename || "file"} with Linux Download Manager...`);
+    notifyTab(downloadItem.tabId, "info", `Downloading ${rawFilename || "file"} with Haul DM...`);
   }
 
   sendToNativeHost(
@@ -525,7 +525,7 @@ try {
 function sendToNativeHost(payload, tabId) {
   if (!payload?.url || !/^https?:/i.test(payload.url)) {
     const error = "Ignored a non-http URL.";
-    console.warn("Linux Download Manager Bridge ignored a non-http URL.", payload);
+    console.warn("Haul DM Bridge ignored a non-http URL.", payload);
     return Promise.resolve({
       ok: false,
       error
@@ -552,7 +552,7 @@ function sendToNativeHost(payload, tabId) {
 
       if (!response?.ok) {
         const error = response?.error ?? "Native host rejected the request.";
-        console.error("Linux Download Manager rejected the request.", error);
+        console.error("Haul DM rejected the request.", error);
         pulseBadge(tabId, "ERR");
         resolve({
           ok: false,
@@ -561,7 +561,7 @@ function sendToNativeHost(payload, tabId) {
         return;
       }
 
-      console.info("Linux Download Manager accepted the request.", response);
+      console.info("Haul DM accepted the request.", response);
       pulseBadge(tabId, "LDM");
       resolve({
         ok: true,
@@ -573,13 +573,13 @@ function sendToNativeHost(payload, tabId) {
 
 function queueNativeCapture(payload, tabId) {
   if (payload?.url && wasRecentlyCaptured(payload.url)) {
-    notifyTab(tabId, "info", "Download is already queued in Linux Download Manager.");
+    notifyTab(tabId, "info", "Download is already queued in Haul DM.");
     return;
   }
 
   enrichCaptureWithMediaCookies(payload, tabId).then((enrichedPayload) => sendToNativeHost(enrichedPayload, tabId)).then((response) => {
     if (response?.ok) {
-      notifyTab(tabId, "success", "Download queued in Linux Download Manager.");
+      notifyTab(tabId, "success", "Download queued in Haul DM.");
       return;
     }
 
@@ -932,8 +932,8 @@ function updateBadge(tabId, count) {
   chrome.action.setTitle({
     tabId,
     title: count > 0
-      ? `Linux Download Manager found ${count} downloadable items`
-      : "Linux Download Manager"
+      ? `Haul DM found ${count} downloadable items`
+      : "Haul DM"
   });
 }
 

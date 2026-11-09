@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linux Download Manager</title>
+    <title>Haul DM</title>
     <link rel="stylesheet" href="styles.css">
     <script>
         (function() {
@@ -34,7 +34,7 @@
                             </svg>
                         </div>
                         <div class="brand-info">
-                            <div class="brand-title">Linux Download Manager</div>
+                            <div class="brand-title">Haul DM</div>
                             <div class="brand-subtitle">High Performance Downloader</div>
                         </div>
                     </div>
@@ -154,7 +154,7 @@
                             <span class="badge" id="cat-image">0</span>
                         </button>
                         <button class="nav-item" data-category="other" title="Other Files">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="nav-icon cat-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
                                 <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
                             </svg>
@@ -187,8 +187,13 @@
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="search-input" placeholder="Search downloads by name or URL… (Ctrl+F)" autocomplete="off">
-                        <button id="search-clear-btn" class="search-clear" hidden title="Clear search" aria-label="Clear search">×</button>
+                        <input type="text" id="search-input" placeholder="Search downloads by name or URL… (Ctrl+F)" aria-label="Search downloads" autocomplete="off">
+                        <button id="search-clear-btn" class="search-clear" hidden title="Clear search" aria-label="Clear search">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 6 6 18"></path>
+                                <path d="m6 6 12 12"></path>
+                            </svg>
+                        </button>
                     </div>
 
                     <div class="toolbar-controls">
@@ -302,7 +307,7 @@
                 <!-- URL Input Group -->
                 <div class="form-group">
                     <label for="url-input" class="form-label">Download URL</label>
-                    <div class="url-input-container">
+                    <div class="field-with-actions">
                         <input type="text" id="url-input" class="input-text" placeholder="https://example.com/file.zip" autofocus>
                         <button id="paste-clipboard-btn" class="btn btn-secondary btn-sm" title="Paste from clipboard">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -345,7 +350,7 @@
                 <!-- Destination Folder -->
                 <div class="form-group">
                     <label for="save-dir-input" class="form-label">Save Folder</label>
-                    <div class="folder-picker-group">
+                    <div class="field-with-actions">
                         <input type="text" id="save-dir-input" class="input-text" placeholder="Default folder">
                         <button id="pick-dir-btn" class="btn btn-secondary">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -455,9 +460,9 @@
                             <div class="setting-name">Default Download Folder</div>
                             <div class="setting-desc">Files will be saved here unless specified otherwise</div>
                         </div>
-                        <div class="folder-picker-group">
+                        <div class="field-with-actions">
                             <span class="setting-path mono" id="settings-download-dir">~/Downloads</span>
-                            <button id="settings-browse-btn" class="btn btn-secondary btn-sm">Browse…</button>
+                            <button id="settings-browse-btn" class="btn btn-secondary">Browse…</button>
                         </div>
                     </div>
 
@@ -500,9 +505,7 @@
                             <div class="setting-name">Chromium Extension Folder</div>
                             <div class="setting-desc">Load unpacked from Chrome/Brave <code>chrome://extensions</code></div>
                         </div>
-                        <div class="btn-group">
-                            <button id="btn-open-ext-folder" class="btn btn-secondary btn-sm">Open Folder</button>
-                        </div>
+                        <button id="btn-open-ext-folder" class="btn btn-secondary btn-sm">Open Folder</button>
                     </div>
                     </div>
                     <div id="extension-hidden-sites-panel" class="extension-settings-panel" hidden>
@@ -546,7 +549,7 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label" for="browser-download-url">URL</label>
-                    <div class="folder-picker-group">
+                    <div class="field-with-actions">
                         <input id="browser-download-url" class="input-text mono" readonly>
                         <button id="bd-copy-url-btn" class="btn btn-ghost btn-sm btn-icon-only" type="button" title="Copy URL" aria-label="Copy URL">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
@@ -585,7 +588,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="browser-download-location">Save to</label>
-                    <div class="browser-download-location-picker">
+                    <div class="field-with-actions">
                         <input id="browser-download-location" class="input-text mono" type="text" readonly>
                         <button id="browser-download-browse" class="btn btn-secondary" type="button">Browse…</button>
                     </div>
@@ -593,12 +596,12 @@
             </div>
             <div class="modal-footer">
                 <button id="browser-download-cancel" class="btn btn-ghost" title="Skip this download and move to the next">Cancel</button>
-                <button id="bd-browser-handle-btn" class="btn btn-ghost" title="Open the URL in your default browser and let it download">
+                <button id="bd-browser-handle-btn" class="btn btn-secondary" title="Open the URL in your default browser and let it download">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     <span>Let browser handle</span>
                 </button>
                 <button id="bd-start-all-btn" class="btn btn-secondary" hidden>Start All</button>
-                <button id="browser-download-start" class="btn btn-primary">Start Download</button>
+                <button id="browser-download-start" class="btn btn-primary btn-cta">Start Download</button>
             </div>
         </div>
     </div>

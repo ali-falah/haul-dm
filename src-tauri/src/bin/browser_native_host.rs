@@ -1,4 +1,4 @@
-use linux_download_manager::{
+use haul_dm::{
     BrowserDownloadRequest, new_browser_download_request, resolve_app_data_dir,
     stage_browser_request,
 };
@@ -192,7 +192,7 @@ fn desktop_binary_path() -> Result<PathBuf, String> {
         return Err("native host executable parent directory is missing".to_string());
     };
 
-    let candidate = parent.join("linux-download-manager");
+    let candidate = parent.join("haul-dm");
     if candidate.exists() {
         return Ok(candidate);
     }
@@ -211,10 +211,10 @@ fn desktop_binary_path() -> Result<PathBuf, String> {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.contains("Linux_Download_Manager") && name.ends_with(".AppImage") {
+                if name.contains("Haul_DM") && name.ends_with(".AppImage") {
                     return Ok(entry.path());
                 }
-                if name == "linux-download-manager" {
+                if name == "haul-dm" {
                     return Ok(entry.path());
                 }
             }
@@ -264,7 +264,7 @@ fn cmdline_contains_desktop_binary(contents: &[u8]) -> bool {
         .filter(|segment| !segment.is_empty())
         .filter_map(|segment| std::str::from_utf8(segment).ok())
         .any(|segment| {
-            segment.ends_with("/linux-download-manager") || segment == "linux-download-manager"
-                || segment.contains("Linux_Download_Manager") && segment.contains(".AppImage")
+            segment.ends_with("/haul-dm") || segment == "haul-dm"
+                || segment.contains("Haul_DM") && segment.contains(".AppImage")
         })
 }
