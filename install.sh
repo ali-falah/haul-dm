@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Linux Download Manager — one-click installer
+# Haul DM — one-click installer
 #
 # Builds the Rust binary, places it under ~/.local/bin, installs a desktop
 # entry + icon, drops the browser extension into ~/Documents/, writes the
@@ -9,7 +9,7 @@
 #     ./install.sh
 #
 # Or one-shot (no prior clone):
-#     curl -fsSL https://raw.githubusercontent.com/ekremx25/linux-download-manager/main/install.sh | bash
+#     curl -fsSL https://raw.githubusercontent.com/ali-falah/haul-dm/main/install.sh | bash
 set -euo pipefail
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
@@ -26,10 +26,10 @@ die()    { echo -e "${BOLD}${RED}✗${RESET}  $*" >&2; exit 1; }
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BIN_DIR="${HOME}/.local/bin"
 export PATH="${HOME}/.cargo/bin:${BIN_DIR}:${PATH}"
-APP_DATA_DIR="${HOME}/.local/share/linux-download-manager"
+APP_DATA_DIR="${HOME}/.local/share/haul-dm"
 DESKTOP_DIR="${HOME}/.local/share/applications"
 ICON_DIR="${HOME}/.local/share/icons/hicolor/256x256/apps"
-EXT_DIR="${HOME}/Documents/Linux Download Manager Extension"
+EXT_DIR="${HOME}/Documents/Haul DM Extension"
 
 NATIVE_HOST_NAME="com.eko.linuxdownloadmanager"
 NATIVE_HOST_BIN="${APP_DATA_DIR}/bin/browser_native_host"
@@ -50,9 +50,9 @@ fi
 if [[ -z "${REPO_DIR}" || ! -f "${REPO_DIR}/src-tauri/Cargo.toml" ]]; then
   log "Fetching source…"
   tmp_dir="$(mktemp -d)"
-  git clone --depth 1 https://github.com/ekremx25/linux-download-manager "${tmp_dir}/ldm" \
+  git clone --depth 1 https://github.com/ali-falah/haul-dm "${tmp_dir}/haul-dm" \
     || die "git clone failed — is git installed and do you have network access?"
-  REPO_DIR="${tmp_dir}/ldm"
+  REPO_DIR="${tmp_dir}/haul-dm"
 fi
 
 cd "${REPO_DIR}"
@@ -125,9 +125,9 @@ build_binary() {
 
 # ── Install all the pieces ───────────────────────────────────────────────────
 install_binary() {
-  log "Installing binary → ${BIN_DIR}/linux-download-manager"
+  log "Installing binary → ${BIN_DIR}/haul-dm"
   mkdir -p "${BIN_DIR}" "${APP_DATA_DIR}/bin"
-  install -m 0755 "target/release/linux-download-manager" "${BIN_DIR}/linux-download-manager"
+  install -m 0755 "target/release/haul-dm" "${BIN_DIR}/haul-dm"
   install -m 0755 "target/release/browser_native_host"    "${NATIVE_HOST_BIN}"
 }
 
@@ -145,17 +145,17 @@ install_extension() {
 install_desktop_entry() {
   log "Installing desktop entry + icon"
   mkdir -p "${DESKTOP_DIR}" "${ICON_DIR}"
-  install -m 0644 "src-tauri/icons/icon.png" "${ICON_DIR}/linux-download-manager.png"
+  install -m 0644 "src-tauri/icons/icon.png" "${ICON_DIR}/haul-dm.png"
 
-  cat > "${DESKTOP_DIR}/linux-download-manager.desktop" <<EOF
+  cat > "${DESKTOP_DIR}/haul-dm.desktop" <<EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Linux Download Manager
+Name=Haul DM
 Comment=IDM-inspired download manager with YouTube/Facebook/Twitter/Reddit support
-Exec=${BIN_DIR}/linux-download-manager %U
-Icon=linux-download-manager
-StartupWMClass=linux-download-manager
+Exec=${BIN_DIR}/haul-dm %U
+Icon=haul-dm
+StartupWMClass=com.eko.linuxdownloadmanager
 Terminal=false
 Categories=Network;FileTransfer;
 EOF
@@ -254,7 +254,7 @@ install_native_host() {
   payload=$(cat <<EOF
 {
   "name": "${NATIVE_HOST_NAME}",
-  "description": "Native messaging bridge for Linux Download Manager",
+  "description": "Native messaging bridge for Haul DM",
   "path": "${NATIVE_HOST_BIN}",
   "type": "stdio",
   "allowed_origins": ["chrome-extension://${EXTENSION_ID}/"]
@@ -279,8 +279,8 @@ final_instructions() {
   log "${BOLD}Installed. ${RESET}"
   echo
   echo "  Launch:"
-  echo "     From your app menu → ${BOLD}Linux Download Manager${RESET}"
-  echo "     Or in a terminal   → ${BOLD}linux-download-manager${RESET}"
+  echo "     From your app menu → ${BOLD}Haul DM${RESET}"
+  echo "     Or in a terminal   → ${BOLD}haul-dm${RESET}"
   echo
   echo "  ${BOLD}One manual step left — load the browser extension:${RESET}"
   echo "     1. Open ${BOLD}chrome://extensions${RESET} (or brave://extensions)"

@@ -5,11 +5,11 @@ use tauri::{Emitter, Manager};
 
 pub fn get_socket_path() -> PathBuf {
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        PathBuf::from(runtime_dir).join("linux-download-manager.sock")
+        PathBuf::from(runtime_dir).join("haul-dm.sock")
     } else {
         crate::platform::resolve_app_data_dir()
             .unwrap_or_else(|_| PathBuf::from("/tmp"))
-            .join("linux-download-manager.sock")
+            .join("haul-dm.sock")
     }
 }
 

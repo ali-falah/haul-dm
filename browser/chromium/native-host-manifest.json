@@ -1,6 +1,6 @@
 {
   "name": "com.eko.linuxdownloadmanager",
-  "description": "Native messaging bridge for Linux Download Manager",
+  "description": "Native messaging bridge for Haul DM",
   "path": "__HOST_BINARY_PATH__",
   "type": "stdio",
   "allowed_origins": ["__EXTENSION_ORIGIN__"]

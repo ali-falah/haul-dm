@@ -176,7 +176,7 @@ function bootstrap() {
 
     clearCaptureTimeout();
     showToast(
-      message.message || "Linux Download Manager returned an unknown response.",
+      message.message || "Haul DM returned an unknown response.",
       message.tone || "info"
     );
   });
@@ -276,8 +276,8 @@ function createHoverButton() {
   hoverButton = document.createElement("button");
   hoverButton.type = "button";
   hoverButton.className = "ldm-hover-button";
-  hoverButton.textContent = "LDM";
-  hoverButton.title = "Download with Linux Download Manager";
+  hoverButton.textContent = "HDM";
+  hoverButton.title = "Download with Haul DM";
   hoverButton.hidden = true;
   hoverButton.addEventListener("click", handleHoverButtonClick);
   document.documentElement.appendChild(hoverButton);
@@ -598,7 +598,7 @@ function resolveSourcePageUrl(candidate) {
 }
 
 function triggerCaptureWithFormat(candidate, format) {
-  showToast("Sending download to Linux Download Manager...", "info");
+  showToast("Sending download to Haul DM...", "info");
   armCaptureTimeout();
 
   const sourcePageUrl = resolveSourcePageUrl(candidate);
@@ -1034,8 +1034,8 @@ function createSiteVideoBadge(onClick, label = "Download") {
   btn.className = "ldm-site-btn";
   btn.setAttribute("role", "button");
   btn.setAttribute("tabindex", "0");
-  btn.setAttribute("title", "Download with Linux Download Manager");
-  btn.setAttribute("aria-label", "Download with Linux Download Manager");
+  btn.setAttribute("title", "Download with Haul DM");
+  btn.setAttribute("aria-label", "Download with Haul DM");
   btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
   btn.setAttribute("style", `
     position: absolute !important;
@@ -1391,7 +1391,7 @@ function injectRedditButtons() {
           post.querySelector?.("h1, h3, [data-testid='post-title']")?.textContent?.trim() ||
           document.title;
 
-        showToast("Sending download to Linux Download Manager...", "info");
+        showToast("Sending download to Haul DM...", "info");
         armCaptureTimeout();
         sendExtensionMessage({
           type: "capture-download",

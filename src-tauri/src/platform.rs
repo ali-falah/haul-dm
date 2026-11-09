@@ -5,14 +5,14 @@ use std::process::Command;
 
 pub fn resolve_app_data_dir() -> Result<PathBuf, String> {
     if let Ok(value) = env::var("XDG_DATA_HOME") {
-        return Ok(PathBuf::from(value).join("linux-download-manager"));
+        return Ok(PathBuf::from(value).join("haul-dm"));
     }
 
     let home = env::var("HOME").map_err(|_| "HOME environment variable is missing".to_string())?;
     Ok(PathBuf::from(home)
         .join(".local")
         .join("share")
-        .join("linux-download-manager"))
+        .join("haul-dm"))
 }
 
 pub fn resolve_default_download_dir() -> Result<PathBuf, String> {
@@ -74,7 +74,7 @@ pub fn run_first_time_setup() {
 
     let manifest = serde_json::json!({
         "name": "com.eko.linuxdownloadmanager",
-        "description": "Native messaging bridge for Linux Download Manager",
+        "description": "Native messaging bridge for Haul DM",
         "path": installed_native_host.to_string_lossy(),
         "type": "stdio",
         "allowed_origins": [format!("chrome-extension://{extension_id}/")]
@@ -140,7 +140,7 @@ fn install_browser_extension(exe_dir: &Path, app_data: &Path, home: &str) {
     // ("Load unpacked" in chrome://extensions), not buried under ~/.local/share.
     let ext_dest = PathBuf::from(home)
         .join("Documents")
-        .join("Linux Download Manager Extension");
+        .join("Haul DM Extension");
     let ext_marker = app_data.join(".extension_installed");
 
     // Tauri's AppImage bundler puts resource files under
@@ -212,7 +212,7 @@ fn install_browser_extension(exe_dir: &Path, app_data: &Path, home: &str) {
     // Show a proper modal dialog (zenity → kdialog → notify-send fallback)
     // with the exact path the user has to pick in 'Load unpacked'.
     let message = format!(
-        "Linux Download Manager has been installed successfully.\n\n\
+        "Haul DM has been installed successfully.\n\n\
         To install the browser extension:\n\n\
         1. In the opened chrome://extensions tab, enable \"Developer mode\" at the top right\n\n\
         2. Click \"Load unpacked\"\n\n\
@@ -224,7 +224,7 @@ fn install_browser_extension(exe_dir: &Path, app_data: &Path, home: &str) {
     let zenity_ok = Command::new("zenity")
         .args([
             "--info",
-            "--title=Linux Download Manager",
+            "--title=Haul DM",
             "--width=520",
             &format!("--text={message}"),
         ])
@@ -233,7 +233,7 @@ fn install_browser_extension(exe_dir: &Path, app_data: &Path, home: &str) {
 
     if !zenity_ok {
         let kdialog_ok = Command::new("kdialog")
-            .args(["--title", "Linux Download Manager", "--msgbox", &message])
+            .args(["--title", "Haul DM", "--msgbox", &message])
             .spawn()
             .is_ok();
 
@@ -241,7 +241,7 @@ fn install_browser_extension(exe_dir: &Path, app_data: &Path, home: &str) {
             // Final fallback: notify-send (no interactive modal).
             let _ = Command::new("notify-send")
                 .args([
-                    "Linux Download Manager",
+                    "Haul DM",
                     &message,
                     "-t",
                     "30000",

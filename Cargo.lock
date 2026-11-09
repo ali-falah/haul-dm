@@ -1528,6 +1528,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "haul-dm"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tokio",
+ "urlencoding",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2085,25 +2104,6 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "linux-download-manager"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "futures-util",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tokio",
- "urlencoding",
 ]
 
 [[package]]

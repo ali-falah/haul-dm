@@ -1,4 +1,4 @@
-// Linux Download Manager — Production UI Controller
+// Haul DM — Production UI Controller
 
 // Tauri IPC helpers
 function getTauri() {
@@ -91,10 +91,16 @@ function loadViewState() {
 // hard-codes "All Downloads" and the status section as active).
 function markSidebarActive() {
     document.querySelectorAll(".sidebar-nav [data-filter]").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.filter === currentFilter);
+        const isActive = btn.dataset.filter === currentFilter;
+        btn.classList.toggle("active", isActive);
+        if (isActive) btn.setAttribute("aria-current", "true");
+        else btn.removeAttribute("aria-current");
     });
     document.querySelectorAll(".sidebar-nav [data-category]").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.category === currentCategory);
+        const isActive = btn.dataset.category === currentCategory;
+        btn.classList.toggle("active", isActive);
+        if (isActive) btn.setAttribute("aria-current", "true");
+        else btn.removeAttribute("aria-current");
     });
 }
 
@@ -147,15 +153,26 @@ function initEventListeners() {
     // Initialize custom dropdowns (replaces native dark GTK menu)
     initCustomDropdowns();
 
+    // Clicking the dimmed backdrop dismisses non-destructive dialogs only.
+    // Confirm dialogs (delete / clear / browser prompt) stay explicit.
+    for (const [backdropId, close] of [
+        ["new-download-modal", closeNewDownloadModal],
+        ["settings-modal", closeSettingsModal],
+    ]) {
+        const backdrop = document.getElementById(backdropId);
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) close();
+        });
+    }
+
     // Collapsible sidebar (collapsed by default)
     initSidebarCollapse();
 
     // Sidebar status filters
     document.querySelectorAll(".sidebar-nav [data-filter]").forEach((btn) => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".sidebar-nav [data-filter]").forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
             currentFilter = btn.dataset.filter;
+            markSidebarActive();
             saveViewState();
             renderDownloadsList();
         });
@@ -164,9 +181,8 @@ function initEventListeners() {
     // Sidebar category filters
     document.querySelectorAll(".sidebar-nav [data-category]").forEach((btn) => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".sidebar-nav [data-category]").forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
             currentCategory = btn.dataset.category;
+            markSidebarActive();
             saveViewState();
             renderDownloadsList();
         });
@@ -316,6 +332,8 @@ function initEventListeners() {
             searchInput.focus();
         } else if (e.key === "Escape") {
             closeTopmostModal(e);
+        } else if (e.key === "Tab") {
+            trapModalTab(e);
         }
     });
 }
@@ -324,7 +342,7 @@ function initEventListeners() {
 
 async function openNewDownloadModal() {
     const modal = document.getElementById("new-download-modal");
-    modal.hidden = false;
+    showModal(modal);
     const urlInput = document.getElementById("url-input");
     urlInput.focus();
 
@@ -341,7 +359,7 @@ async function openNewDownloadModal() {
 }
 
 function closeNewDownloadModal() {
-    document.getElementById("new-download-modal").hidden = true;
+    hideModal(document.getElementById("new-download-modal"));
     document.getElementById("url-input").value = "";
     document.getElementById("custom-filename-input").value = "";
     document.getElementById("checksum-input").value = "";
@@ -352,12 +370,12 @@ function closeNewDownloadModal() {
 }
 
 function openSettingsModal() {
-    document.getElementById("settings-modal").hidden = false;
+    showModal(document.getElementById("settings-modal"));
     loadSettings();
 }
 
 function closeSettingsModal() {
-    document.getElementById("settings-modal").hidden = true;
+    hideModal(document.getElementById("settings-modal"));
     // Revert the unsaved folder pick (theme is reverted the same way).
     document.getElementById("settings-download-dir").textContent =
         appSettings?.defaultDownloadDir || "~/Downloads";
@@ -373,12 +391,55 @@ function openDeleteModal(downloadId, fileName) {
     deleteCandidateId = downloadId;
     document.getElementById("delete-item-name").textContent = fileName;
     document.getElementById("delete-file-checkbox").checked = false;
-    document.getElementById("delete-modal").hidden = false;
+    showModal(document.getElementById("delete-modal"));
 }
 
 function closeDeleteModal() {
     deleteCandidateId = null;
-    document.getElementById("delete-modal").hidden = true;
+    hideModal(document.getElementById("delete-modal"));
+}
+
+// ── Modal focus management ──────────────────────────────────────────────────
+// Dialogs are plain hidden/shown divs, so focus must be managed by hand:
+// remember the invoking element, restore it on close, and keep Tab inside
+// the topmost visible dialog.
+let lastFocusedBeforeModal = null;
+
+function showModal(modal) {
+    if (modal.hidden) lastFocusedBeforeModal = document.activeElement;
+    modal.hidden = false;
+}
+
+function hideModal(modal) {
+    modal.hidden = true;
+    const target = lastFocusedBeforeModal;
+    lastFocusedBeforeModal = null;
+    if (target && document.contains(target) && target.offsetParent !== null) target.focus();
+}
+
+function trapModalTab(event) {
+    if (event.key !== "Tab") return;
+    const openIds = MODAL_STACK.filter((id) => !document.getElementById(id).hidden);
+    if (!openIds.length) return;
+    const modal = document.getElementById(openIds[openIds.length - 1]);
+    const focusables = Array.from(
+        modal.querySelectorAll(
+            '.modal-window button:not([disabled]), .modal-window input:not([disabled]), .modal-window select:not([disabled]), .modal-window textarea:not([disabled]), .modal-window [href], .modal-window [tabindex]:not([tabindex="-1"])'
+        )
+    ).filter((el) => el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    } else if (!modal.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 // Esc behaves like a normal desktop app: it closes only the topmost visible
@@ -445,7 +506,7 @@ function showNextBrowserDownload() {
     currentBrowserDownload = pendingBrowserDownloads.shift() || null;
     const modal = document.getElementById("browser-download-modal");
     if (!currentBrowserDownload) {
-        modal.hidden = true;
+        hideModal(modal);
         syncBrowserDialogFocus();
         return;
     }
@@ -483,7 +544,7 @@ function showNextBrowserDownload() {
     document.getElementById("bd-start-all-btn").hidden = remaining === 0;
 
     resetBrowserDownloadMetadata();
-    modal.hidden = false;
+    showModal(modal);
     document.getElementById("browser-download-filename").focus();
 
     // IDM-style: the window this dialog lives in should be in front of
@@ -608,7 +669,7 @@ async function startAllBrowserDownloads() {
     const allRequests = [currentBrowserDownload, ...pendingBrowserDownloads].filter(Boolean);
     pendingBrowserDownloads.length = 0;
     currentBrowserDownload = null;
-    document.getElementById("browser-download-modal").hidden = true;
+    hideModal(document.getElementById("browser-download-modal"));
     resetBrowserDownloadMetadata();
     syncBrowserDialogFocus();
 
@@ -795,6 +856,7 @@ function setupCustomDropdown(containerId, selectId) {
     if (!container || !select) return;
 
     const trigger = container.querySelector(".custom-dropdown-btn");
+    const menu = container.querySelector(".custom-dropdown-menu");
     const label = container.querySelector(".custom-dropdown-label");
     const items = container.querySelectorAll(".custom-dropdown-item");
 
@@ -809,29 +871,79 @@ function setupCustomDropdown(containerId, selectId) {
         });
     }
 
+    function closeMenu(returnFocus) {
+        container.classList.remove("open");
+        if (trigger) trigger.setAttribute("aria-expanded", "false");
+        if (returnFocus && trigger) trigger.focus();
+    }
+
+    function openMenu(focusIndex) {
+        document.querySelectorAll(".custom-dropdown.open").forEach((d) => {
+            if (d !== container) {
+                d.classList.remove("open");
+                const b = d.querySelector(".custom-dropdown-btn");
+                if (b) b.setAttribute("aria-expanded", "false");
+            }
+        });
+        container.classList.add("open");
+        if (trigger) trigger.setAttribute("aria-expanded", "true");
+        if (typeof focusIndex === "number" && items[focusIndex]) items[focusIndex].focus();
+    }
+
     if (trigger) {
         trigger.addEventListener("click", (e) => {
             e.stopPropagation();
-            const isOpen = container.classList.contains("open");
-            document.querySelectorAll(".custom-dropdown.open").forEach((d) => {
-                if (d !== container) d.classList.remove("open");
-            });
-            container.classList.toggle("open", !isOpen);
-            trigger.setAttribute("aria-expanded", !isOpen ? "true" : "false");
+            if (container.classList.contains("open")) closeMenu(false);
+            else openMenu();
+        });
+        // Keyboard: ArrowDown/ArrowUp opens the list and focuses the
+        // selection; menu-level keys are handled below.
+        trigger.addEventListener("keydown", (e) => {
+            if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+            e.preventDefault();
+            const selected = Array.prototype.findIndex.call(items, (i) => i.classList.contains("active"));
+            const fallback = e.key === "ArrowDown" ? 0 : items.length - 1;
+            openMenu(selected >= 0 ? selected : fallback);
         });
     }
 
     items.forEach((item) => {
+        item.tabIndex = -1;
         item.addEventListener("click", (e) => {
             e.stopPropagation();
             const val = item.dataset.value;
             select.value = val;
             updateUI();
-            container.classList.remove("open");
-            if (trigger) trigger.setAttribute("aria-expanded", "false");
+            closeMenu(true);
             select.dispatchEvent(new Event("change"));
         });
     });
+
+    if (menu) {
+        menu.addEventListener("keydown", (e) => {
+            const list = Array.prototype.slice.call(items);
+            const index = list.indexOf(document.activeElement);
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                const next = e.key === "ArrowDown"
+                    ? (index + 1) % list.length
+                    : (index - 1 + list.length) % list.length;
+                list[next].focus();
+            } else if (e.key === "Home" || e.key === "End") {
+                e.preventDefault();
+                list[e.key === "Home" ? 0 : list.length - 1].focus();
+            } else if ((e.key === "Enter" || e.key === " ") && index >= 0) {
+                e.preventDefault();
+                list[index].click();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                closeMenu(true);
+            } else if (e.key === "Tab") {
+                closeMenu(true);
+            }
+        });
+    }
 
     select.addEventListener("sync", updateUI);
     updateUI();
@@ -991,11 +1103,11 @@ function openClearFinishedModal() {
         return;
     }
     document.getElementById("clear-finished-count").textContent = finishedCount;
-    document.getElementById("clear-finished-modal").hidden = false;
+    showModal(document.getElementById("clear-finished-modal"));
 }
 
 function closeClearFinishedModal() {
-    document.getElementById("clear-finished-modal").hidden = true;
+    hideModal(document.getElementById("clear-finished-modal"));
 }
 
 async function confirmClearFinished() {
@@ -1665,7 +1777,7 @@ function getCategorySvgIcon(cat) {
         case "image":
             return `<svg class="cat-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>`;
         default:
-            return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>`;
+            return `<svg class="cat-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>`;
     }
 }
 

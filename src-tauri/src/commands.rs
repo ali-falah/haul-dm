@@ -186,7 +186,7 @@ pub async fn extension_folder(state: State<'_, AppState>) -> Result<Option<Strin
     if let Ok(home) = std::env::var("HOME") {
         let candidate = std::path::PathBuf::from(home)
             .join("Documents")
-            .join("Linux Download Manager Extension");
+            .join("Haul DM Extension");
         if candidate.is_dir() {
             return Ok(Some(candidate.display().to_string()));
         }

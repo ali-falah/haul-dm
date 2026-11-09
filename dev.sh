@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Quick dev launcher for Linux Download Manager
+# Quick dev launcher for Haul DM
 set -e
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,10 +8,10 @@ cd "${REPO_DIR}"
 NATIVE_HOST_NAME="com.eko.linuxdownloadmanager"
 EXTENSION_ID="dhbkcopeagecbkoncdjefnjlcienhlpg"
 NATIVE_HOST_BIN="${REPO_DIR}/target/debug/browser_native_host"
-EXT_DIR="${HOME}/Documents/Linux Download Manager Extension"
+EXT_DIR="${HOME}/Documents/Haul DM Extension"
 
 # Terminate any running app instance (exact process name only to never affect terminal)
-pkill -x linux-download-manager 2>/dev/null || true
+pkill -x haul-dm 2>/dev/null || true
 
 # Build the native messaging host binary (needed for browser-extension communication)
 echo "==> Building native host binary…"
@@ -24,7 +24,7 @@ echo "==> Installing native messaging host manifest (dev)…"
 DEV_HOST_PAYLOAD=$(cat <<EOF
 {
   "name": "${NATIVE_HOST_NAME}",
-  "description": "Native messaging bridge for Linux Download Manager (dev)",
+  "description": "Native messaging bridge for Haul DM (dev)",
   "path": "${NATIVE_HOST_BIN}",
   "type": "stdio",
   "allowed_origins": ["chrome-extension://${EXTENSION_ID}/"]
@@ -53,10 +53,10 @@ for file in manifest.json service-worker.js content-script.js content-style.css 
   cp "browser/chromium/${file}" "${EXT_DIR}/" 2>/dev/null || true
 done
 
-echo "==> Starting Linux Download Manager in Development Mode…"
+echo "==> Starting Haul DM in Development Mode…"
 cargo run --manifest-path src-tauri/Cargo.toml "$@"
 
 
-# Sync browser extension files to ~/Documents/Linux Download Manager Extension
-mkdir -p "$HOME/Documents/Linux Download Manager Extension"
-cp -r browser/chromium/* "$HOME/Documents/Linux Download Manager Extension/"
+# Sync browser extension files to ~/Documents/Haul DM Extension
+mkdir -p "$HOME/Documents/Haul DM Extension"
+cp -r browser/chromium/* "$HOME/Documents/Haul DM Extension/"

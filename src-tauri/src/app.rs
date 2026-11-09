@@ -747,7 +747,7 @@ pub fn send_download_notification(app_handle: &AppHandle, title: &str, body: Str
     // reliable on Linux; the Tauri plugin is only a fallback.
     let sent = std::process::Command::new("notify-send")
         .arg("-a")
-        .arg("Linux Download Manager")
+        .arg("Haul DM")
         .arg(title)
         .arg(&body)
         .spawn()

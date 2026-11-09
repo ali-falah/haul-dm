@@ -36,7 +36,7 @@ pub fn run() {
 
             single_instance::start_single_instance_listener(app_handle.clone());
 
-            let show_item = MenuItemBuilder::with_id("show", "Show Linux Download Manager").build(app)?;
+            let show_item = MenuItemBuilder::with_id("show", "Show Haul DM").build(app)?;
             let add_item = MenuItemBuilder::with_id("add", "Add New Download...").build(app)?;
             let settings_item = MenuItemBuilder::with_id("settings", "Settings...").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
@@ -57,7 +57,7 @@ pub fn run() {
             let handle_for_tray = app_handle.clone();
             TrayIconBuilder::new()
                 .icon(tray_icon)
-                .tooltip("Linux Download Manager")
+                .tooltip("Haul DM")
                 .menu(&tray_menu)
                 .on_menu_event(move |_tray, event| {
                     match event.id().as_ref() {

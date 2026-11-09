@@ -1,4 +1,4 @@
-# Linux Download Manager
+# Haul DM
 
 A high-performance, full-featured download manager for Linux built with Rust and Tauri. Designed as a modern, native alternative to Internet Download Manager (IDM) with native browser integration and intelligent media capture.
 
@@ -46,18 +46,18 @@ Run the automated installer from the repository root:
 
 The installer will:
 1. Compile the optimized release binary.
-2. Install the executable to `~/.local/bin/linux-download-manager`.
-3. Set up the background native host bridge in `~/.local/share/linux-download-manager/bin/`.
+2. Install the executable to `~/.local/bin/haul-dm`.
+3. Set up the background native host bridge in `~/.local/share/haul-dm/bin/`.
 4. Register the desktop launcher in `~/.local/share/applications/`.
-5. Prepare the browser extension in `~/Documents/Linux Download Manager Extension`.
+5. Prepare the browser extension in `~/Documents/Haul DM Extension`.
 6. Configure native messaging manifests for installed Chromium browsers.
 
 ### Running the App
 
-- **From App Menu**: Search for **Linux Download Manager** in your desktop application launcher.
+- **From App Menu**: Search for **Haul DM** in your desktop application launcher.
 - **From Terminal**:
   ```bash
-  linux-download-manager
+  haul-dm
   ```
 
 ## Browser Extension Setup
@@ -69,7 +69,7 @@ To enable browser download interception and video detection:
 3. Click **Load unpacked**.
 4. Select the folder:
    ```
-   ~/Documents/Linux Download Manager Extension
+   ~/Documents/Haul DM Extension
    ```
 5. Pin the extension to your toolbar for easy access.
 
