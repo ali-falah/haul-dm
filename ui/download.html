@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download — Haul DM</title>
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("ldm_theme") || "system";
+                let effective = saved;
+                if (saved === "system") {
+                    effective = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                }
+                document.documentElement.setAttribute("data-theme", effective);
+            } catch (e) {}
+        })();
+    </script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dlw-body">
@@ -12,8 +24,8 @@
             <div class="file-type-icon" id="dlw-icon"></div>
             <div class="dlw-heading">
                 <div class="dlw-title-row">
-                    <span class="dlw-percent" id="dlw-percent">0%</span>
                     <h1 class="dlw-title" id="dlw-title">Download</h1>
+                    <span class="dlw-percent" id="dlw-percent">0%</span>
                 </div>
             </div>
             <div class="dlw-window-actions">
@@ -26,38 +38,47 @@
             </div>
         </header>
 
-        <section class="dlw-details" aria-label="Download details">
-            <span class="dlw-label">Name</span>
-            <span class="dlw-value" id="dlw-name">—</span>
-
-            <span class="dlw-label">URL</span>
-            <span class="dlw-value mono" id="dlw-url">—</span>
-
-            <span class="dlw-label">Status</span>
-            <span class="dlw-value"><span class="status-pill status-queued" id="dlw-status-pill"><span id="dlw-status">Queued</span></span></span>
-
-            <span class="dlw-label">File size</span>
-            <span class="dlw-value" id="dlw-size">—</span>
-
-            <span class="dlw-label">Downloaded</span>
-            <span class="dlw-value" id="dlw-downloaded">—</span>
-
-            <span class="dlw-label">Transfer rate</span>
-            <span class="dlw-value" id="dlw-rate">—</span>
-
-            <span class="dlw-label">Time left</span>
-            <span class="dlw-value" id="dlw-eta">—</span>
-
-            <span class="dlw-label">Resume support</span>
-            <span class="dlw-value" id="dlw-resumable">—</span>
-
-            <span class="dlw-label">Save to</span>
-            <span class="dlw-value mono" id="dlw-path">—</span>
-        </section>
-
         <div class="progress-track dlw-progress" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="dlw-progress-track">
             <div class="progress-fill" id="dlw-progress"></div>
         </div>
+
+        <section class="dlw-summary" aria-label="Download summary">
+            <div class="dlw-stat">
+                <span class="dlw-label">Status</span>
+                <span class="dlw-value"><span class="status-pill status-queued" id="dlw-status-pill"><span id="dlw-status">Queued</span></span></span>
+            </div>
+            <div class="dlw-stat">
+                <span class="dlw-label">File size</span>
+                <span class="dlw-value" id="dlw-size">—</span>
+            </div>
+            <div class="dlw-stat">
+                <span class="dlw-label">Downloaded</span>
+                <span class="dlw-value" id="dlw-downloaded">—</span>
+            </div>
+            <div class="dlw-stat">
+                <span class="dlw-label">Transfer rate</span>
+                <span class="dlw-value" id="dlw-rate">—</span>
+            </div>
+            <div class="dlw-stat">
+                <span class="dlw-label">Time left</span>
+                <span class="dlw-value" id="dlw-eta">—</span>
+            </div>
+            <div class="dlw-stat">
+                <span class="dlw-label">Resume support</span>
+                <span class="dlw-value" id="dlw-resumable">—</span>
+            </div>
+        </section>
+
+        <section class="dlw-paths" aria-label="Download locations">
+            <div class="dlw-field">
+                <span class="dlw-label">URL</span>
+                <span class="dlw-value mono" id="dlw-url">—</span>
+            </div>
+            <div class="dlw-field">
+                <span class="dlw-label">Save to</span>
+                <span class="dlw-value mono" id="dlw-path">—</span>
+            </div>
+        </section>
 
         <div class="dlw-controls">
             <div class="dlw-controls-left">

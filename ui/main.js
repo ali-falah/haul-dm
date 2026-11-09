@@ -68,6 +68,14 @@ const SORT_OPTIONS = ["newest", "oldest", "name", "size"];
 const STATUS_FILTERS = ["all", "in_progress", "queued", "paused", "completed", "failed"];
 const CATEGORY_FILTERS = ["all", "video", "audio", "archive", "document", "image", "other"];
 
+function syncRangeFill(input) {
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const value = Number(input.value);
+    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    input.style.setProperty("--fill", `${percent}%`);
+}
+
 function saveViewState() {
     try {
         localStorage.setItem("ldm_sort", sortBy);
@@ -286,9 +294,11 @@ function initEventListeners() {
     });
     document.getElementById("settings-max-concurrent").addEventListener("input", (e) => {
         document.getElementById("concurrent-display").textContent = e.target.value;
+        syncRangeFill(e.target);
     });
     document.getElementById("settings-connections").addEventListener("input", (e) => {
         document.getElementById("connections-display").textContent = e.target.value;
+        syncRangeFill(e.target);
     });
     document.querySelectorAll("[data-extension-tab]").forEach((tab) => tab.addEventListener("click", () => {
         document.querySelectorAll("[data-extension-tab]").forEach((item) => item.classList.toggle("active", item === tab));
@@ -997,6 +1007,8 @@ async function loadSettings() {
             document.getElementById("concurrent-display").textContent = appSettings.maxConcurrentDownloads || 3;
             document.getElementById("settings-connections").value = appSettings.connectionsPerDownload || 4;
             document.getElementById("connections-display").textContent = appSettings.connectionsPerDownload || 4;
+            syncRangeFill(document.getElementById("settings-max-concurrent"));
+            syncRangeFill(document.getElementById("settings-connections"));
             document.getElementById("settings-bandwidth-limit").value = appSettings.defaultBandwidthLimitKbps || "";
             document.getElementById("settings-ask-browser-location").checked = appSettings.askBrowserDownloadLocation !== false;
             renderHiddenSites();
@@ -1393,7 +1405,7 @@ function renderDownloadCard(dl) {
                 <span>Folder</span>
             </button>
             <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-path" data-path="${escapeAttr(dl.savePath)}" title="Copy file path" aria-label="Copy file path">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
             </button>
             <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-link" data-url="${escapeAttr(dl.url)}" title="Copy download URL" aria-label="Copy download URL">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
@@ -1421,7 +1433,7 @@ function renderDownloadCard(dl) {
                 <span>Resume</span>
             </button>
             <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-path" data-path="${escapeAttr(dl.savePath)}" title="Copy file path" aria-label="Copy file path">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
             </button>
             <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-link" data-url="${escapeAttr(dl.url)}" title="Copy link" aria-label="Copy link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
@@ -1439,14 +1451,14 @@ function renderDownloadCard(dl) {
     }
 
     return `
-        <div class="download-card ${isDownloading ? "card-active" : ""}" data-download-id="${dl.id}">
+        <div class="download-card ${isDownloading ? "card-active" : ""} status-${dl.status}" data-download-id="${dl.id}">
             <div class="card-header">
                 <div class="file-type-icon">
                     ${getCategorySvgIcon(category)}
                 </div>
                 <div class="card-title-group">
                     <div class="file-name-row">
-                        <span class="file-name" title="${escapeAttr(dl.fileName)} (${escapeAttr(dl.savePath)})">${escapeHtml(dl.fileName)}</span>
+                        <span class="file-name" role="button" tabindex="0" title="${escapeAttr(dl.fileName)} (${escapeAttr(dl.savePath)})">${escapeHtml(dl.fileName)}</span>
                         <span class="domain-pill">${escapeHtml(host)}</span>
                     </div>
                 </div>
@@ -1465,7 +1477,7 @@ function renderDownloadCard(dl) {
             <div class="card-footer">
                 <div class="card-metrics">
                     <span class="metric-size">${sizeText}</span>
-                    <span class="metric-percent">(${total ? `${progress}%` : "Live"})</span>
+                    <span class="metric-percent">${total ? `${progress}%` : "Live"}</span>
                     <span class="metric-speed-wrapper">${speedHtml}</span>
                     <span class="metric-eta-wrapper">${etaHtml}</span>
                     ${checksumHtml}
@@ -1480,6 +1492,15 @@ function renderDownloadCard(dl) {
 }
 
 function attachCardActionHandlers() {
+    document.querySelectorAll(".file-name[role='button']").forEach((el) => {
+        el.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            el.click();
+        });
+    });
+
     document.querySelectorAll("[data-action]").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             e.stopPropagation();
@@ -1634,7 +1655,7 @@ function handleDownloadStateEvent(event) {
             }
             const pctEl = metricsEl.querySelector(".metric-percent");
             if (pctEl) {
-                pctEl.textContent = `(${total ? `${progress}%` : "Live"})`;
+                pctEl.textContent = total ? `${progress}%` : "Live";
             }
 
             const stats = liveDownloadStats.get(event.id);
@@ -1722,6 +1743,7 @@ function updateCounts() {
     };
 
     const catCounts = {
+        all: 0,
         video: 0,
         audio: 0,
         archive: 0,
@@ -1737,6 +1759,7 @@ function updateCounts() {
             counts.queued++;
         }
 
+        catCounts.all++;
         const cat = categorizeFile(dl.fileName);
         if (catCounts[cat] !== undefined) {
             catCounts[cat]++;
@@ -1751,6 +1774,7 @@ function updateCounts() {
     document.getElementById("count-failed").textContent = counts.failed;
 
     const catElements = {
+        "cat-all": document.getElementById("cat-all"),
         "cat-video": document.getElementById("cat-video"),
         "cat-audio": document.getElementById("cat-audio"),
         "cat-archive": document.getElementById("cat-archive"),
@@ -1879,6 +1903,8 @@ function showToast(message, type = "info", duration = 2800) {
 
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
+    toast.setAttribute("role", type === "error" ? "alert" : "status");
+    toast.setAttribute("aria-atomic", "true");
     toast.innerHTML = `
         ${toastIconSvg(type)}
         <span>${escapeHtml(message)}</span>
@@ -1900,10 +1926,15 @@ function showActionToast({ message, type = "info", duration = 2800, sticky = fal
 
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
+    toast.setAttribute("role", type === "error" ? "alert" : "status");
+    toast.setAttribute("aria-atomic", "true");
     toast.innerHTML = `
         ${toastIconSvg(type)}
         <span>${escapeHtml(message)}</span>
         ${actions.map((action) => `<button class="toast-action">${escapeHtml(action.label)}</button>`).join("")}
+        ${sticky ? `<button type="button" class="toast-dismiss" title="Dismiss" aria-label="Dismiss notification">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>` : ""}
     `;
 
     toast.querySelectorAll(".toast-action").forEach((btn, index) => {
@@ -1913,6 +1944,11 @@ function showActionToast({ message, type = "info", duration = 2800, sticky = fal
             const action = actions[index];
             if (action) action.onClick();
         });
+    });
+
+    toast.querySelector(".toast-dismiss")?.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        dismissToast(toast);
     });
 
     if (sticky) {

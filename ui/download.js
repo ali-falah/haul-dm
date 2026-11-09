@@ -20,7 +20,6 @@ const el = {
     icon: document.getElementById("dlw-icon"),
     percent: document.getElementById("dlw-percent"),
     title: document.getElementById("dlw-title"),
-    name: document.getElementById("dlw-name"),
     url: document.getElementById("dlw-url"),
     statusPill: document.getElementById("dlw-status-pill"),
     status: document.getElementById("dlw-status"),
@@ -162,7 +161,7 @@ function renderDetails(payload) {
     lastProgressBytes = d.downloadedBytes;
 
     el.title.textContent = d.fileName;
-    el.name.textContent = d.fileName;
+    el.title.title = d.fileName;
     el.url.textContent = d.url;
     el.url.title = d.url;
     el.path.textContent = d.savePath;

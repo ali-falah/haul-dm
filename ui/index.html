@@ -35,7 +35,6 @@
                         </div>
                         <div class="brand-info">
                             <div class="brand-title">Haul DM</div>
-                            <div class="brand-subtitle">High Performance Downloader</div>
                         </div>
                     </div>
                     <button id="sidebar-collapse-btn" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
@@ -56,44 +55,43 @@
                             <span class="badge" id="count-all">0</span>
                         </button>
                         <button class="nav-item" data-filter="in_progress" title="Downloading">
-                            <svg class="nav-icon nav-icon-downloading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M12 8v8"></path>
-                                <path d="m8 12 4 4 4-4"></path>
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3v12"></path>
+                                <path d="m7 10 5 5 5-5"></path>
+                                <path d="M5 21h14"></path>
                             </svg>
                             <span class="nav-label">Downloading</span>
                             <span class="badge badge-active" id="count-in_progress">0</span>
                         </button>
                         <button class="nav-item" data-filter="queued" title="Queued">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
+                                <path d="M5 22h14"></path>
+                                <path d="M5 2h14"></path>
+                                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
+                                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
                             </svg>
                             <span class="nav-label">Queued</span>
                             <span class="badge" id="count-queued">0</span>
                         </button>
                         <button class="nav-item" data-filter="paused" title="Paused">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="10" y1="15" x2="10" y2="9"></line>
-                                <line x1="14" y1="15" x2="14" y2="9"></line>
+                                <rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect>
+                                <rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect>
                             </svg>
                             <span class="nav-label">Paused</span>
                             <span class="badge" id="count-paused">0</span>
                         </button>
                         <button class="nav-item" data-filter="completed" title="Completed">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="m9 12 2 2 4-4"></path>
+                                <path d="M20 6 9 17l-5-5"></path>
                             </svg>
                             <span class="nav-label">Completed</span>
                             <span class="badge badge-success" id="count-completed">0</span>
                         </button>
                         <button class="nav-item" data-filter="failed" title="Failed">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="m15 9-6 6"></path>
-                                <path d="m9 9 6 6"></path>
+                                <path d="M18 6 6 18"></path>
+                                <path d="m6 6 12 12"></path>
                             </svg>
                             <span class="nav-label">Failed</span>
                             <span class="badge badge-danger" id="count-failed">0</span>
@@ -104,6 +102,16 @@
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Categories</div>
                     <nav class="sidebar-nav">
+                        <button class="nav-item" data-category="all" title="All categories">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                            </svg>
+                            <span class="nav-label">All</span>
+                            <span class="badge" id="cat-all">0</span>
+                        </button>
                         <button class="nav-item" data-category="video" title="Videos">
                             <svg class="nav-icon cat-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path>
@@ -187,7 +195,7 @@
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="search-input" placeholder="Search downloads by name or URL… (Ctrl+F)" aria-label="Search downloads" autocomplete="off">
+                        <input type="text" id="search-input" placeholder="Search downloads…" title="Search downloads (Ctrl+F)" aria-label="Search downloads" autocomplete="off">
                         <button id="search-clear-btn" class="search-clear" hidden title="Clear search" aria-label="Clear search">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M18 6 6 18"></path>
@@ -220,7 +228,7 @@
                                 </select>
                             </div>
                         </div>
-                        <button id="clear-completed-btn" class="btn btn-secondary btn-sm" title="Remove all completed or failed items from the list">
+                        <button id="clear-completed-btn" class="btn btn-secondary btn-sm" title="Remove all completed or failed items from the list" aria-label="Clear finished downloads">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -257,7 +265,7 @@
                             <span>New Download</span>
                             <span class="kbd-badge">Ctrl+N</span>
                         </button>
-                        <button id="btn-pause-all" class="btn btn-secondary" title="Pause or resume all active downloads">
+                        <button id="btn-pause-all" class="btn btn-secondary" title="Pause or resume all active downloads" aria-label="Pause or resume all active downloads">
                             <svg id="icon-pause-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect>
                                 <rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect>
@@ -472,7 +480,7 @@
                             <div class="setting-desc">Number of files downloaded at the same time</div>
                         </div>
                         <div class="stepper-input">
-                            <input type="range" id="settings-max-concurrent" min="1" max="10" value="3">
+                            <input type="range" id="settings-max-concurrent" min="1" max="10" value="3" aria-label="Max concurrent downloads">
                             <span class="range-value" id="concurrent-display">3</span>
                         </div>
                     </div>
@@ -483,7 +491,7 @@
                             <div class="setting-desc">Parallel connections per download — applies to new downloads (1–16)</div>
                         </div>
                         <div class="stepper-input">
-                            <input type="range" id="settings-connections" min="1" max="16" value="4">
+                            <input type="range" id="settings-connections" min="1" max="16" value="4" aria-label="Parallel connections per download">
                             <span class="range-value" id="connections-display">4</span>
                         </div>
                     </div>
@@ -493,7 +501,7 @@
                             <div class="setting-name">Default Bandwidth Limit</div>
                             <div class="setting-desc">Global speed cap per download in KB/s (0 = unlimited)</div>
                         </div>
-                        <input type="number" id="settings-bandwidth-limit" class="input-text input-compact" min="0" placeholder="0">
+                        <input type="number" id="settings-bandwidth-limit" class="input-text input-compact" min="0" placeholder="0" aria-label="Default bandwidth limit in KB/s">
                     </div>
                 </div>
 
