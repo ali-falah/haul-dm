@@ -15,6 +15,8 @@ const downloadId = (() => {
     }
 })();
 const POLL_INTERVAL_MS = 1000;
+const AUTO_FIT_MIN_HEIGHT = 440;
+const AUTO_FIT_MAX_HEIGHT = 900;
 
 const el = {
     icon: document.getElementById("dlw-icon"),
@@ -50,6 +52,8 @@ const el = {
 let details = null;
 let lastStatus = "";
 let refreshAt = 0;
+let fittedKey = "";
+let fitScheduled = false;
 // Percentage only ever moves forward while a download is running, even if a
 // slower poll response lands after a newer live event.
 let lastProgressBytes = 0;
@@ -156,6 +160,43 @@ function setProgress(downloaded, total) {
     el.progressTrack.setAttribute("aria-valuenow", String(Math.round(percent)));
 }
 
+function scheduleFitWindow() {
+    if (fitScheduled) return;
+    fitScheduled = true;
+    requestAnimationFrame(() => {
+        fitScheduled = false;
+        fitWindowToContent();
+    });
+}
+
+async function fitWindowToContent() {
+    if (!downloadId) return;
+    const tauri = getTauri();
+    const win = tauri?.window?.getCurrentWindow?.();
+    const LogicalSize = tauri?.dpi?.LogicalSize;
+    if (!win?.setSize || !LogicalSize) return;
+
+    const status = details?.download?.status || "";
+    const key = `${status}:${el.connections.hidden ? "collapsed" : "open"}:${el.error.hidden ? "ok" : "error"}`;
+    if (key === fittedKey) return;
+
+    document.body.classList.add("dlw-measure");
+    const natural = Math.ceil(document.querySelector(".dlw")?.getBoundingClientRect().height || 0);
+    document.body.classList.remove("dlw-measure");
+    if (!natural) return;
+
+    const screenCap = window.screen?.availHeight ? window.screen.availHeight - 40 : AUTO_FIT_MAX_HEIGHT;
+    const maxHeight = Math.max(AUTO_FIT_MIN_HEIGHT, Math.min(AUTO_FIT_MAX_HEIGHT, screenCap));
+    const height = Math.max(AUTO_FIT_MIN_HEIGHT, Math.min(maxHeight, natural + 2));
+
+    fittedKey = key;
+    try {
+        await win.setSize(new LogicalSize(window.innerWidth, height));
+    } catch (error) {
+        console.error("Could not fit download window:", error);
+    }
+}
+
 function renderDetails(payload) {
     const d = payload.download;
     details = payload;
@@ -198,6 +239,7 @@ function renderDetails(payload) {
     setProgress(d.downloadedBytes, d.totalBytes);
     renderConnections(payload.connections, d.totalBytes);
     updateControls(d.status);
+    scheduleFitWindow();
 }
 
 function renderConnections(connections, totalBytes) {
@@ -316,6 +358,7 @@ function applyStateEvent(payload) {
         el.error.hidden = true;
     }
     updateControls(payload.status);
+    scheduleFitWindow();
 
     if (payload.status === "completed" && lastStatus !== "completed" && el.closeWhenDone.checked) {
         // This window closes itself; raise the main window first so the
@@ -365,6 +408,7 @@ function init() {
         el.connections.hidden = hidden;
         el.toggleDetails.textContent = hidden ? "Show details" : "Hide details";
         el.toggleDetails.setAttribute("aria-expanded", hidden ? "false" : "true");
+        scheduleFitWindow();
     });
 
     el.pause.addEventListener("click", async () => {

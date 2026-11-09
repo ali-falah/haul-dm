@@ -55,8 +55,8 @@ pub fn open_download_window(
             let url = WebviewUrl::App(format!("download.html?id={download_id}").into());
             match WebviewWindowBuilder::new(&app, &label, url)
                 .title(title)
-                .inner_size(1024.0, 731.0)
-                .min_inner_size(760.0, 520.0)
+                .inner_size(1024.0, 640.0)
+                .min_inner_size(760.0, 440.0)
                 .decorations(false)
                 .center()
                 .focused(true)

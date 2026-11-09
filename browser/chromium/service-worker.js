@@ -72,25 +72,18 @@ function saveCaptureDiagnostic(tabId, page) {
 
 chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
 
+function ensureContextMenu(id, title, contexts) {
+  chrome.contextMenus.update(id, { title, contexts }, () => {
+    if (!chrome.runtime.lastError) return;
+    chrome.contextMenus.create({ id, title, contexts }, () => void chrome.runtime.lastError);
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   ensureSiteVisibilityMenu();
-  chrome.contextMenus.create({
-    id: MENU_DOWNLOAD_LINK,
-    title: "Download link with Haul DM",
-    contexts: ["link"]
-  });
-
-  chrome.contextMenus.create({
-    id: MENU_DOWNLOAD_PAGE,
-    title: "Download page URL with Haul DM",
-    contexts: ["page"]
-  });
-
-  chrome.contextMenus.create({
-    id: MENU_DOWNLOAD_MEDIA,
-    title: "Download media with Haul DM",
-    contexts: ["video", "audio"]
-  });
+  ensureContextMenu(MENU_DOWNLOAD_LINK, "Download link with Haul DM", ["link"]);
+  ensureContextMenu(MENU_DOWNLOAD_PAGE, "Download page URL with Haul DM", ["page"]);
+  ensureContextMenu(MENU_DOWNLOAD_MEDIA, "Download media with Haul DM", ["video", "audio"]);
 });
 
 chrome.action.onClicked.addListener((tab) => {
@@ -194,7 +187,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
   if (message?.type === "candidate-count") {
-    updateBadge(tabId, message.count);
+    if ((sender.frameId ?? 0) === 0) updateBadge(tabId, message.count);
     sendResponse({ ok: true });
     return;
   }
@@ -257,8 +250,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ok: false,
         error: payload?.error ?? "Video stream not captured yet. Please refresh the page and play the video, then try again."
       });
-      try { saveCaptureDiagnostic(tabId, sender.tab?.url); }
-      catch (error) { console.warn("LDM diagnostic export failed", error); }
+      console.warn("Haul DM media capture failed:", payload?.error);
       return;
     }
 
@@ -358,16 +350,6 @@ async function interceptBrowserDownload(downloadItem) {
 
   rememberCapture(url);
 
-  chrome.downloads.cancel(downloadItem.id, () => {
-    const lastError = chrome.runtime.lastError;
-    if (lastError) {
-      console.warn("Could not cancel browser download.", lastError.message);
-    }
-    setTimeout(() => {
-      chrome.downloads.erase({ id: downloadItem.id }, () => void chrome.runtime.lastError);
-    }, 500);
-  });
-
   let httpHeaders = {};
   if (chrome.cookies?.getAll) {
     try {
@@ -398,7 +380,29 @@ async function interceptBrowserDownload(downloadItem) {
     },
     downloadItem.byExtensionId ? undefined : downloadItem.tabId
   ).then((res) => {
-    if (res?.ok && typeof downloadItem.tabId === "number" && downloadItem.tabId >= 0) {
+    if (!res?.ok) {
+      // Keep the browser download alive so a missing/stopped Haul DM never
+      // loses the file; the user can retry after fixing the host.
+      recentCaptures.delete(url);
+      if (typeof downloadItem.tabId === "number" && downloadItem.tabId >= 0) {
+        notifyTab(
+          downloadItem.tabId,
+          "error",
+          `Haul DM could not accept ${rawFilename || "the download"}. The browser download was kept.`
+        );
+      }
+      return;
+    }
+
+    chrome.downloads.cancel(downloadItem.id, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("Could not cancel browser download.", chrome.runtime.lastError.message);
+      }
+      setTimeout(() => {
+        chrome.downloads.erase({ id: downloadItem.id }, () => void chrome.runtime.lastError);
+      }, 500);
+    });
+    if (typeof downloadItem.tabId === "number" && downloadItem.tabId >= 0) {
       notifyTab(downloadItem.tabId, "success", `Download started: ${rawFilename || "file"}`);
     }
   });

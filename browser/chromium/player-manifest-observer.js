@@ -16,7 +16,11 @@
   window.addEventListener('message', event => {
     if (event.source !== window || event.data?.type !== 'ldm-request-player-manifests') return;
     for (const url of manifests.keys()) {
-      window.postMessage({type: 'ldm-player-manifest', url}, location.origin);
+      try {
+        window.postMessage({type: 'ldm-player-manifest', url}, location.origin);
+      } catch (_) {
+        window.postMessage({type: 'ldm-player-manifest', url}, '*');
+      }
     }
   });
   const originalFetch = window.fetch;

@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Haul DM Bridge",
-  "version": "0.1.24",
+  "version": "0.1.25",
+  "minimum_chrome_version": "111",
   "description": "Sends links from Chromium-based browsers to Haul DM.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwpHvkTQ2J23CrvIxAXIZcCT+dv61MMIta3RiVDzp4k0n1ZGaRQLDvvff9V4hU580GXSwGMR4XgCXGZj2LXcxNrndBFTJCqoGDcYQuDAQJiR0y7Eg6eoc0hjjvUaAiMd4Aq8xWSz4LqoYSVmTPdLRgRRtPxD4yVxr6bRqXAb906oohYaNki9NBqb690BoV+BsLY3WgxgU5ZFLwqQrRVXRLXkRDQgv+Y0bUczZebHfNskn9AIPHvnWpBvzp/TuOpRkvesRPyNHWpE1D4Dy/yftE/0y+tSxfecwDBBIi2DV31sl9gLXpHKajU0MdHM+5BYCG7JCAeiQ4VOPpqYgR6leaQIDAQAB",
   "permissions": [
@@ -30,7 +31,9 @@
         "content-style.css"
       ],
       "run_at": "document_idle",
-      "all_frames": true
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
     },
     {
       "matches": [

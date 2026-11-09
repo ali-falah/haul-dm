@@ -33,7 +33,9 @@ Focused verification (no full production builds — `cargo check` only):
     `desktop file StartupWMClass`).
   - Extension `key`/ID `dhbkcopeagecbkoncdjefnjlcienhlpg` in `manifest.json`.
   - `ldm-*` DOM/CSS/message namespace shared by `content-script.js`, `content-style.css`,
-    `player-manifest-observer.js`, and `browser/tests/*.cjs`. The page badge renders "HDM".
+    `player-manifest-observer.js`, and `browser/tests/*.cjs`. The injected UI uses `.ldm-ui`
+    Harbor-Teal tokens; the badge is icon-only and opens the action menu, while labeled
+    "Download" pills act immediately. Toasts anchor bottom-right with sticky errors.
 - `browser_native_host` locates the desktop binary by exact name `haul-dm` (or `Haul_DM*.AppImage`) —
   keep those checks in sync if the binary name ever changes. Cargo lib crate name is `haul_dm`
   (derived from the package name; imports use `haul_dm::`).
@@ -88,6 +90,10 @@ Focused verification (no full production builds — `cargo check` only):
   folder**, active/paused shows **Pause|Resume / Cancel / Open folder**; terminal states hide
   "Close when completed" and the live rate/ETA tiles. Progress and connection fills follow status
   (green completed, amber paused, red failed).
+- The window **auto-fits its content height** (440–900px) on first render, status changes and details
+  toggles via `getCurrentWindow().setSize()`; default 1024×640, min 760×440. Requires
+  `core:window:allow-set-size` in `capabilities/default.json`; `fitWindowToContent` measures with the
+  temporary `.dlw-measure` class and only resizes when the status/details/error key changes.
 - Capability `windows` includes `download-*`; permissions include `core:window:allow-close`,
   `core:window:allow-minimize` and `core:window:allow-start-dragging` for the in-page window chrome.
 - Download windows are **undecorated** (`decorations(false)`): the header is dragged via

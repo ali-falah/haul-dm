@@ -1610,6 +1610,16 @@ input[type="checkbox"]:focus-visible {
     overflow-y: auto;
 }
 
+/* Measurement mode: drop the viewport-fill + pushed footer so the natural
+   content height can be read before resizing the OS window to fit it. */
+.dlw-measure .dlw {
+    min-height: 0 !important;
+}
+
+.dlw-measure .dlw-footer {
+    margin-top: 0 !important;
+}
+
 .dlw {
     display: flex;
     flex-direction: column;

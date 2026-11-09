@@ -58,8 +58,8 @@ let reportTimer = null;
 let recentMediaCandidates = [];
 let mediaOverlayRoot = null;
 let mediaRefreshTimer = null;
+let mediaScanTimer = null;
 let toastRoot = null;
-let toastTimer = null;
 let captureTimeout = null;
 let lastCaptureRequestAt = 0;
 let lastLocationHref = window.location.href;
@@ -75,6 +75,7 @@ function disconnectExtension() {
   window.clearInterval(periodicRefreshHandle);
   window.clearTimeout(reportTimer);
   window.clearTimeout(mediaRefreshTimer);
+  window.clearTimeout(mediaScanTimer);
   clearCaptureTimeout();
   pageObserver?.disconnect();
   hoverButton?.remove();
@@ -155,6 +156,7 @@ function bootstrap() {
   startPeriodicRefresh();
   enableButtonDragging();
   installSiteHideOption();
+  document.addEventListener("fullscreenchange", handleFullscreenChange, true);
 
   document.addEventListener("pointerover", handlePointerOver, true);
   document.addEventListener("pointermove", handlePointerOver, true);
@@ -188,42 +190,89 @@ function installSiteHideOption() {
     if (!icon) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    document.querySelector(".ldm-site-menu")?.remove();
+
+    document.getElementById("ldm-site-context-menu")?.remove();
     const menu = document.createElement("div");
-    menu.className = "ldm-site-menu";
-    menu.textContent = "Hide download icon on this site";
-    menu.style.left = `${Math.min(event.clientX, innerWidth - 220)}px`;
-    menu.style.top = `${Math.min(event.clientY, innerHeight - 52)}px`;
-    menu.addEventListener("click", () => {
-      sendExtensionMessage({
-        type: "set-hidden-sites",
-        hiddenSites: [...new Set([...hiddenSitesForPage, window.location.hostname.toLowerCase()])]
-      }, (response) => {
-        if (response?.ok) window.location.reload();
-        else showToast("Could not update hidden sites. Check the native messaging host.", "error");
-      });
-    });
-    document.documentElement.appendChild(menu);
-    const dismiss = (click) => {
-      if (!menu.contains(click.target)) menu.remove();
+    menu.className = "ldm-menu ldm-ui ldm-context-menu";
+    menu.id = "ldm-site-context-menu";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Haul DM icon options");
+    applyUiTheme(menu, icon);
+    menu.appendChild(createMenuItem({
+      label: "Hide icon on this site",
+      icon: LDM_ICON.hide,
+      danger: true,
+      onClick: () => {
+        close();
+        hideCurrentSite();
+      }
+    }));
+
+    const container = document.fullscreenElement || document.body || document.documentElement;
+    container?.appendChild?.(menu);
+
+    const vpW = window.innerWidth || 1280;
+    const vpH = window.innerHeight || 720;
+    const rect = menu.getBoundingClientRect?.() ?? { width: 240, height: 48 };
+    const left = Math.max(8, Math.min(event.clientX, vpW - (rect.width || 240) - 8));
+    const top = event.clientY + (rect.height || 48) + 8 > vpH
+      ? Math.max(8, event.clientY - (rect.height || 48) - 8)
+      : event.clientY + 2;
+    menu.style.setProperty("left", `${Math.round(left)}px`, "important");
+    menu.style.setProperty("top", `${Math.round(top)}px`, "important");
+    menu.querySelector(".ldm-menu-item")?.focus?.({ preventScroll: true });
+
+    const close = () => {
       document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close, true);
+      menu.remove();
     };
-    setTimeout(() => document.addEventListener("pointerdown", dismiss, true), 0);
+    const dismiss = (click) => {
+      if (!menu.contains?.(click.target)) close();
+    };
+    const onKey = (keyboardEvent) => {
+      if (keyboardEvent.key === "Escape") {
+        keyboardEvent.preventDefault();
+        close();
+      }
+    };
+    window.setTimeout(() => {
+      document.addEventListener("pointerdown", dismiss, true);
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("scroll", close, true);
+      window.addEventListener("resize", close, true);
+    }, 0);
   }, true);
 }
 
 function enableButtonDragging() {
   let dragged = null;
   let start = null;
+  let position = null;
   const key = `buttonPosition:${window.location.hostname}`;
+
   chrome.storage.local.get(key, (saved) => {
-    const position = saved[key];
+    position = saved[key] || null;
     const applyPosition = (button) => {
       if (!position || button.dataset.ldmPositionRestored) return;
+      const width = button.getBoundingClientRect?.().width || 32;
+      const height = button.getBoundingClientRect?.().height || 32;
+      if (
+        !Number.isFinite(position.left) ||
+        !Number.isFinite(position.top) ||
+        position.left < -width ||
+        position.top < -height ||
+        position.left > window.innerWidth ||
+        position.top > window.innerHeight
+      ) {
+        return;
+      }
       button.dataset.ldmPositionRestored = "true";
       button.style.setProperty("position", "fixed", "important");
-      button.style.setProperty("left", `${position.left}px`, "important");
-      button.style.setProperty("top", `${position.top}px`, "important");
+      button.style.setProperty("left", `${Math.max(0, Math.min(position.left, window.innerWidth - width))}px`, "important");
+      button.style.setProperty("top", `${Math.max(0, Math.min(position.top, window.innerHeight - height))}px`, "important");
       button.style.setProperty("right", "auto", "important");
     };
     const restore = (root) => {
@@ -234,31 +283,47 @@ function enableButtonDragging() {
     new MutationObserver((records) => records.forEach((record) => record.addedNodes.forEach(restore)))
       .observe(document.documentElement, { childList: true, subtree: true });
   });
+
+  const endDrag = (event, save) => {
+    if (!dragged || !start) return;
+    if (save && start.moved) {
+      const next = { left: parseFloat(dragged.style.left), top: parseFloat(dragged.style.top) };
+      position = next;
+      chrome.storage.local.set({ [key]: next });
+      dragged.dataset.ldmDragged = "true";
+      const button = dragged;
+      setTimeout(() => delete button.dataset.ldmDragged, 0);
+    }
+    try {
+      if (event?.pointerId != null) dragged.releasePointerCapture?.(event.pointerId);
+    } catch (_) {}
+    dragged = null;
+    start = null;
+  };
+
   document.addEventListener("pointerdown", (event) => {
     const button = event.target.closest?.(".ldm-media-button-floating, #ldm-yt-download-btn");
     if (!button || event.button !== 0) return;
     dragged = button;
     start = { x: event.clientX, y: event.clientY, rect: button.getBoundingClientRect(), moved: false };
+    try { button.setPointerCapture?.(event.pointerId); } catch (_) {}
   }, true);
+
   document.addEventListener("pointermove", (event) => {
     if (!dragged || !start) return;
-    if (!start.moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 5) return;
+    if (!start.moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 6) return;
     start.moved = true;
+    event.preventDefault?.();
     dragged.style.setProperty("position", "fixed", "important");
     dragged.style.setProperty("left", `${Math.max(0, Math.min(innerWidth - start.rect.width, start.rect.left + event.clientX - start.x))}px`, "important");
     dragged.style.setProperty("top", `${Math.max(0, Math.min(innerHeight - start.rect.height, start.rect.top + event.clientY - start.y))}px`, "important");
     dragged.style.setProperty("right", "auto", "important");
   }, true);
-  document.addEventListener("pointerup", () => {
-    if (dragged && start?.moved) {
-      chrome.storage.local.set({ [key]: { left: parseFloat(dragged.style.left), top: parseFloat(dragged.style.top) } });
-      dragged.dataset.ldmDragged = "true";
-      const button = dragged;
-      setTimeout(() => delete button.dataset.ldmDragged, 0);
-    }
-    dragged = null;
-    start = null;
-  }, true);
+
+  document.addEventListener("pointerup", (event) => endDrag(event, true), true);
+  document.addEventListener("pointercancel", (event) => endDrag(event, false), true);
+  window.addEventListener("blur", () => endDrag(null, false));
+
   document.addEventListener("click", (event) => {
     if (event.target.closest?.("[data-ldm-dragged='true']")) {
       event.preventDefault();
@@ -276,8 +341,10 @@ function createHoverButton() {
   hoverButton = document.createElement("button");
   hoverButton.type = "button";
   hoverButton.className = "ldm-hover-button";
-  hoverButton.textContent = "HDM";
+  hoverButton.classList.add("ldm-ui");
+  hoverButton.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span>Download</span>`;
   hoverButton.title = "Download with Haul DM";
+  hoverButton.setAttribute("aria-label", "Download with Haul DM");
   hoverButton.hidden = true;
   hoverButton.addEventListener("click", handleHoverButtonClick);
   document.documentElement.appendChild(hoverButton);
@@ -290,6 +357,7 @@ function createMediaOverlay() {
 
   mediaOverlayRoot = document.createElement("div");
   mediaOverlayRoot.className = "ldm-media-layer";
+  mediaOverlayRoot.classList.add("ldm-ui");
   document.documentElement.appendChild(mediaOverlayRoot);
 }
 
@@ -300,7 +368,22 @@ function createToastRoot() {
 
   toastRoot = document.createElement("div");
   toastRoot.className = "ldm-toast-root";
+  toastRoot.classList.add("ldm-ui");
+  applyUiTheme(toastRoot, document.body);
   document.documentElement.appendChild(toastRoot);
+}
+
+function handleFullscreenChange() {
+  const container = document.fullscreenElement || document.body || document.documentElement;
+  for (const node of [hoverButton, mediaOverlayRoot, toastRoot]) {
+    if (node) container.appendChild(node);
+  }
+  const menu = document.getElementById("ldm-quality-picker");
+  if (menu) {
+    container.appendChild(menu);
+    repositionQualityPicker(menu, qualityPickerAnchor);
+  }
+  if (toastRoot) applyUiTheme(toastRoot, container);
 }
 
 function isCandidateAlreadyDecorated(element) {
@@ -320,8 +403,8 @@ function isCandidateAlreadyDecorated(element) {
 }
 
 function hasInlineButtons() {
-  return (/youtube\.com|youtu\.be/i.test(window.location.hostname) && Boolean(document.querySelector("#ldm-yt-download-btn, .ldm-site-btn, .ldm-inline-btn"))) ||
-    (/facebook\.com|fb\.watch|instagram\.com|x\.com|twitter\.com|reddit\.com|tiktok\.com/i.test(window.location.hostname) && Boolean(document.querySelector(".ldm-site-btn")));
+  return (/(^|\.)(youtube\.com|youtu\.be)$/i.test(window.location.hostname) && Boolean(document.querySelector("#ldm-yt-download-btn, .ldm-site-btn, .ldm-inline-btn"))) ||
+    (/(^|\.)(facebook\.com|fb\.watch|instagram\.com|x\.com|twitter\.com|reddit\.com|tiktok\.com)$/i.test(window.location.hostname) && Boolean(document.querySelector(".ldm-site-btn")));
 }
 
 function handlePointerOver(event) {
@@ -332,6 +415,7 @@ function handlePointerOver(event) {
 
   const candidate = extractCandidateFromPoint(event);
   if (!candidate || candidate.kind === "media" || candidate.kind === "media-fallback" || isCandidateAlreadyDecorated(candidate.element)) {
+    hideHoverButton();
     return;
   }
 
@@ -366,208 +450,352 @@ function handleHoverButtonClick(event) {
     return;
   }
 
-  triggerCaptureForCandidate(activeCandidate, hoverButton);
+  triggerCaptureDirect(activeCandidate);
 }
 
 function isYtdlpSupportedSite() {
   const host = window.location.hostname;
-  return /(youtube\.com|youtu\.be|x\.com|twitter\.com|facebook\.com|instagram\.com|fb\.watch|reddit\.com|tiktok\.com|vimeo\.com|dailymotion\.com|twitch\.tv)$/i.test(host);
+  return /(^|\.)(youtube\.com|youtu\.be|x\.com|twitter\.com|facebook\.com|instagram\.com|fb\.watch|reddit\.com|tiktok\.com|vimeo\.com|dailymotion\.com|twitch\.tv)$/i.test(host);
 }
 
 let qualityPickerAnchor = null;
+let menuCandidate = null;
+let menuView = "top";
 
-function repositionQualityPicker(picker, anchorElement) {
-  if (!picker) return;
+const QUALITY_OPTIONS = [
+  { label: "Best available", format: "bv*+ba/b" },
+  { label: "4K (2160p)", format: "bv*[height<=2160]+ba/b" },
+  { label: "1440p", format: "bv*[height<=1440]+ba/b" },
+  { label: "1080p", format: "bv*[height<=1080]+ba/b" },
+  { label: "720p", format: "bv*[height<=720]+ba/b" },
+  { label: "480p", format: "bv*[height<=480]+ba/b" },
+  { label: "360p", format: "bv*[height<=360]+ba/b" },
+  { label: "Audio only", format: "ba/b" }
+];
 
+const LDM_ICON = {
+  download:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>',
+  quality:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><circle cx="9" cy="7" r="2"></circle><line x1="4" y1="17" x2="20" y2="17"></line><circle cx="15" cy="17" r="2"></circle></svg>',
+  hide:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"></path><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.4 5.2A10.9 10.9 0 0 1 12 5c5 0 9 4.5 9 7a11.8 11.8 0 0 1-2.1 3.2"></path><path d="M6.3 6.3C4.3 7.8 3 9.7 3 12c0 2.5 4 7 9 7 1.4 0 2.7-.4 3.8-1"></path></svg>',
+  back:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+  close:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>'
+};
+
+function detectUiTheme(anchor) {
+  try {
+    let el = anchor === document.body
+      ? document.body
+      : (anchor?.parentElement || document.body);
+    for (let depth = 0; depth < 8 && el; depth += 1) {
+      const bg = window.getComputedStyle?.(el)?.backgroundColor;
+      const match = bg?.match(/rgba?\(([^)]+)\)/);
+      if (match) {
+        const parts = match[1].split(",").map((part) => Number.parseFloat(part.trim()));
+        const alpha = parts.length > 3 ? parts[3] : 1;
+        if (parts.length >= 3 && alpha >= 0.8) {
+          const [r, g, b] = parts;
+          const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+          if (lum < 0.2) return "dark";
+          if (lum > 0.5) return "light";
+        }
+      }
+      el = el.parentElement;
+    }
+  } catch (_) {}
+  return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+}
+
+function applyUiTheme(node, anchor) {
+  if (!node?.dataset) return;
+  node.dataset.ldmTheme = detectUiTheme(anchor);
+}
+
+function repositionQualityPicker(menu, anchorElement) {
+  if (!menu) return;
   let anchor = anchorElement || qualityPickerAnchor;
   if (!anchor || !anchor.isConnected) {
     anchor = document.getElementById("ldm-yt-download-btn") ||
-             document.querySelector(".ldm-site-btn") ||
-             hoverButton;
-  }
-
-  if (!anchor || typeof anchor.getBoundingClientRect !== "function") {
-    picker.style.setProperty("top", "50%", "important");
-    picker.style.setProperty("left", "50%", "important");
-    picker.style.setProperty("right", "auto", "important");
-    picker.style.setProperty("bottom", "auto", "important");
-    picker.style.setProperty("transform", "translate(-50%, -50%)", "important");
-    return;
-  }
-
-  const anchorRect = anchor.getBoundingClientRect();
-  if (anchorRect.width === 0 && anchorRect.height === 0) {
-    picker.style.setProperty("top", "50%", "important");
-    picker.style.setProperty("left", "50%", "important");
-    picker.style.setProperty("right", "auto", "important");
-    picker.style.setProperty("bottom", "auto", "important");
-    picker.style.setProperty("transform", "translate(-50%, -50%)", "important");
-    return;
+      document.querySelector(".ldm-site-btn") ||
+      hoverButton;
   }
 
   const vpW = window.innerWidth || document.documentElement?.clientWidth || 1280;
   const vpH = window.innerHeight || document.documentElement?.clientHeight || 720;
 
-  // If anchor has scrolled out of view, close picker
-  if (
-    anchorRect.bottom < 0 ||
-    anchorRect.top > vpH ||
-    anchorRect.right < 0 ||
-    anchorRect.left > vpW
-  ) {
+  if (!anchor || typeof anchor.getBoundingClientRect !== "function") {
+    menu.style.setProperty("top", "50%", "important");
+    menu.style.setProperty("left", "50%", "important");
+    menu.style.setProperty("right", "auto", "important");
+    menu.style.setProperty("transform", "translate(-50%, -50%)", "important");
+    return;
+  }
+
+  const anchorRect = anchor.getBoundingClientRect();
+  if (anchorRect.width === 0 && anchorRect.height === 0) {
+    menu.style.setProperty("top", "50%", "important");
+    menu.style.setProperty("left", "50%", "important");
+    menu.style.setProperty("right", "auto", "important");
+    menu.style.setProperty("transform", "translate(-50%, -50%)", "important");
+    return;
+  }
+
+  if (anchorRect.bottom < 0 || anchorRect.top > vpH || anchorRect.right < 0 || anchorRect.left > vpW) {
     closeQualityPicker();
     return;
   }
 
-  const pickerRect = (typeof picker.getBoundingClientRect === "function")
-    ? picker.getBoundingClientRect()
-    : { width: 190, height: 330 };
-  const pickerWidth = pickerRect.width || 190;
-  const pickerHeight = pickerRect.height || 330;
-  const margin = 8;
+  const menuRect = typeof menu.getBoundingClientRect === "function"
+    ? menu.getBoundingClientRect()
+    : { width: 250, height: 220 };
+  const menuWidth = menuRect.width || 250;
+  const menuHeight = menuRect.height || 220;
+  const margin = 6;
 
-  // Vertical: prefer placing directly below the button
   let top = anchorRect.bottom + margin;
-  if (top + pickerHeight > vpH - 10 && anchorRect.top - pickerHeight - margin >= 10) {
-    top = anchorRect.top - pickerHeight - margin;
+  if (top + menuHeight > vpH - 8 && anchorRect.top - menuHeight - margin >= 8) {
+    top = anchorRect.top - menuHeight - margin;
   }
-  top = Math.max(10, Math.min(top, vpH - pickerHeight - 10));
+  top = Math.max(8, Math.min(top, vpH - menuHeight - 8));
 
-  // Horizontal: if anchor center is in right half of screen (e.g. YouTube top-right badge),
-  // right-align menu with anchor so it opens inward into the player/screen.
-  let left;
   const anchorCenterX = anchorRect.left + anchorRect.width / 2;
-  if (anchorCenterX > vpW / 2) {
-    left = anchorRect.right - pickerWidth;
-  } else {
-    left = anchorRect.left;
-  }
-  left = Math.max(10, Math.min(left, vpW - pickerWidth - 10));
+  let left = anchorCenterX > vpW / 2
+    ? anchorRect.right - menuWidth
+    : anchorRect.left;
+  left = Math.max(8, Math.min(left, vpW - menuWidth - 8));
 
-  picker.style.setProperty("top", `${Math.round(top)}px`, "important");
-  picker.style.setProperty("left", `${Math.round(left)}px`, "important");
-  picker.style.setProperty("right", "auto", "important");
-  picker.style.setProperty("bottom", "auto", "important");
-  picker.style.setProperty("transform", "none", "important");
+  menu.style.setProperty("top", `${Math.round(top)}px`, "important");
+  menu.style.setProperty("left", `${Math.round(left)}px`, "important");
+  menu.style.setProperty("right", "auto", "important");
+  menu.style.setProperty("transform", "none", "important");
 }
 
 function handleQualityPickerScrollOrResize() {
-  const picker = document.getElementById("ldm-quality-picker");
-  if (!picker) return;
-  repositionQualityPicker(picker, qualityPickerAnchor);
+  const menu = document.getElementById("ldm-quality-picker");
+  if (!menu) return;
+  repositionQualityPicker(menu, qualityPickerAnchor);
 }
 
 function handleQualityPickerKeyDown(event) {
+  const menu = document.getElementById("ldm-quality-picker");
+  if (!menu) return;
   if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
     closeQualityPicker();
+    return;
+  }
+  const items = [...menu.querySelectorAll(".ldm-menu-item")];
+  if (!items.length) return;
+  const index = items.indexOf(document.activeElement);
+
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    event.stopPropagation();
+    const next = event.key === "ArrowDown"
+      ? (index + 1 + items.length) % items.length
+      : (index - 1 + items.length) % items.length;
+    items[next].focus({ preventScroll: true });
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    event.stopPropagation();
+    items[event.key === "Home" ? 0 : items.length - 1].focus({ preventScroll: true });
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    event.stopPropagation();
+    const next = event.shiftKey
+      ? (index - 1 + items.length) % items.length
+      : (index + 1) % items.length;
+    items[next].focus({ preventScroll: true });
+  } else if (event.key === "ArrowLeft" && menuView === "quality") {
+    event.preventDefault();
+    event.stopPropagation();
+    renderMenuView("top");
+  } else if (event.key === "ArrowRight" && menuView === "top" && isYtdlpSupportedSite()) {
+    const qualityItem = menu.querySelector('[data-action="quality"]');
+    if (qualityItem && document.activeElement === qualityItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      renderMenuView("quality");
+    }
   }
 }
 
-function showQualityPicker(candidate, anchorElement) {
-  const existing = document.getElementById("ldm-quality-picker");
-  if (existing) {
-    const isSameAnchor = existing._anchorElement === anchorElement;
-    closeQualityPicker();
-    if (isSameAnchor && anchorElement) {
-      return;
-    }
-  }
+function createMenuItem({ label, icon, hint = "", primary = false, danger = false, selected = false, action = "", onClick }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "ldm-menu-item";
+  if (primary) button.className += " ldm-menu-primary";
+  if (danger) button.className += " is-danger";
+  if (selected) button.className += " is-selected";
+  if (action) button.dataset.action = action;
+  button.setAttribute("role", "menuitem");
+  button.innerHTML = `${icon || ""}<span class="ldm-menu-label">${label}</span>${hint ? `<span class="ldm-menu-hint">${hint}</span>` : ""}`;
+  button.addEventListener("pointerdown", (event) => event.stopPropagation());
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClick?.();
+  });
+  return button;
+}
 
-  qualityPickerAnchor = anchorElement || null;
+function menuHeader(view) {
+  const header = document.createElement("div");
+  header.className = "ldm-menu-header";
 
-  const qualities = [
-    { label: "Best quality", format: "bv*+ba/b" },
-    { label: "4K (2160p)", format: "bv*[height<=2160]+ba/b" },
-    { label: "1440p", format: "bv*[height<=1440]+ba/b" },
-    { label: "1080p", format: "bv*[height<=1080]+ba/b" },
-    { label: "720p", format: "bv*[height<=720]+ba/b" },
-    { label: "480p", format: "bv*[height<=480]+ba/b" },
-    { label: "360p", format: "bv*[height<=360]+ba/b" },
-    { label: "Audio only", format: "ba/b" }
-  ];
-
-  const picker = document.createElement("div");
-  picker.className = "ldm-quality-picker";
-  picker.id = "ldm-quality-picker";
-  picker._anchorElement = anchorElement || null;
-  picker.setAttribute("style", `
-    position: fixed !important;
-    z-index: 2147483647 !important;
-    background: rgba(18, 18, 18, 0.97) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 12px !important;
-    padding: 6px 0 !important;
-    min-width: 180px !important;
-    max-height: calc(100vh - 24px) !important;
-    overflow-y: auto !important;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important;
-    backdrop-filter: blur(12px) !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  `);
-
-  const title = document.createElement("div");
-  title.className = "ldm-quality-title";
-  title.setAttribute("style", `
-    padding: 10px 16px 6px !important;
-    font: 700 13px/1 sans-serif !important;
-    color: #86e8ff !important;
-    letter-spacing: 0.04em !important;
-  `);
-  title.textContent = "Select Quality";
-  picker.appendChild(title);
-
-  for (const quality of qualities) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "ldm-quality-option";
-    btn.textContent = quality.label;
-    btn.setAttribute("style", `
-      display: block !important;
-      width: 100% !important;
-      border: 0 !important;
-      background: transparent !important;
-      color: #e8e8e8 !important;
-      font: 500 13px/1 sans-serif !important;
-      padding: 10px 16px !important;
-      text-align: left !important;
-      cursor: pointer !important;
-      pointer-events: auto !important;
-    `);
-    btn.addEventListener("pointerdown", (e) => { e.stopPropagation(); });
-    btn.addEventListener("mouseenter", () => {
-      btn.style.setProperty("background", "rgba(61,210,159,0.18)", "important");
-      btn.style.setProperty("color", "#3dd29f", "important");
-    });
-    btn.addEventListener("mouseleave", () => {
-      btn.style.setProperty("background", "transparent", "important");
-      btn.style.setProperty("color", "#e8e8e8", "important");
-    });
-    btn.addEventListener("click", (event) => {
+  if (view === "quality") {
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "ldm-menu-back";
+    back.setAttribute("aria-label", "Back to download options");
+    back.innerHTML = LDM_ICON.back;
+    back.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      event.stopImmediatePropagation();
-      closeQualityPicker();
-      triggerCaptureWithFormat(candidate, quality.format);
-    }, true);
-    picker.appendChild(btn);
+      renderMenuView("top");
+    });
+    header.appendChild(back);
+
+    const title = document.createElement("span");
+    title.className = "ldm-menu-brand ldm-menu-title";
+    title.textContent = "Quality";
+    header.appendChild(title);
+  } else {
+    const brand = document.createElement("span");
+    brand.className = "ldm-menu-brand";
+    brand.textContent = "Haul DM";
+    header.appendChild(brand);
   }
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "ldm-menu-close";
+  close.setAttribute("aria-label", "Close download options");
+  close.innerHTML = LDM_ICON.close;
+  close.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeQualityPicker();
+  });
+  header.appendChild(close);
+  return header;
+}
+
+function hideCurrentSite() {
+  const hostname = window.location.hostname.toLowerCase();
+  sendExtensionMessage({
+    type: "set-hidden-sites",
+    hiddenSites: [...new Set([...hiddenSitesForPage, hostname])]
+  }, (response) => {
+    if (!response?.ok) {
+      showToast("Could not update hidden sites. Check the native messaging host.", "error");
+      return;
+    }
+    hiddenSitesForPage = [...new Set([...hiddenSitesForPage, hostname])];
+    showToast("Hidden on this site. Change it in Settings → Extension → Hidden sites.", "success");
+    window.setTimeout(() => window.location.reload(), 900);
+  });
+}
+
+function renderMenuView(view) {
+  const menu = document.getElementById("ldm-quality-picker");
+  if (!menu || !menuCandidate) return;
+  menuView = view;
+  menu.replaceChildren(menuHeader(view));
+
+  if (view === "quality") {
+    for (const quality of QUALITY_OPTIONS) {
+      menu.appendChild(createMenuItem({
+        label: quality.label,
+        icon: "",
+        selected: quality.format === QUALITY_OPTIONS[0].format,
+        onClick: () => {
+          closeQualityPicker();
+          triggerCaptureWithFormat(menuCandidate, quality.format);
+        }
+      }));
+    }
+  } else {
+    const ytdlp = isYtdlpSupportedSite();
+    menu.appendChild(createMenuItem({
+      label: ytdlp ? "Download best quality" : "Download",
+      icon: LDM_ICON.download,
+      hint: ytdlp ? "Best" : "",
+      primary: true,
+      onClick: () => {
+        closeQualityPicker();
+        triggerCaptureWithFormat(menuCandidate, null);
+      }
+    }));
+
+    if (ytdlp) {
+      menu.appendChild(createMenuItem({
+        label: "Choose quality…",
+        icon: LDM_ICON.quality,
+        action: "quality",
+        onClick: () => renderMenuView("quality")
+      }));
+    }
+
+    const separator = document.createElement("div");
+    separator.className = "ldm-menu-separator";
+    menu.appendChild(separator);
+
+    menu.appendChild(createMenuItem({
+      label: "Hide icon on this site",
+      icon: LDM_ICON.hide,
+      danger: true,
+      onClick: () => {
+        closeQualityPicker();
+        hideCurrentSite();
+      }
+    }));
+  }
+
+  repositionQualityPicker(menu, qualityPickerAnchor);
+  const first = menu.querySelector(".ldm-menu-primary, .ldm-menu-item");
+  first?.focus?.({ preventScroll: true });
+}
+
+function openDownloadMenu(candidate, anchorElement) {
+  if (!candidate) return;
+  const existing = document.getElementById("ldm-quality-picker");
+  if (existing) {
+    const same = existing._anchorElement === anchorElement;
+    closeQualityPicker();
+    if (same && anchorElement) return;
+  }
+
+  menuCandidate = candidate;
+  qualityPickerAnchor = anchorElement || null;
+  anchorElement?.setAttribute?.("aria-expanded", "true");
+
+  const menu = document.createElement("div");
+  menu.className = "ldm-menu ldm-ui";
+  menu.id = "ldm-quality-picker";
+  menu._anchorElement = anchorElement || null;
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Haul DM download options");
+  applyUiTheme(menu, anchorElement);
 
   const container = document.fullscreenElement || document.body || document.documentElement;
-  if (container && container.appendChild) {
-    container.appendChild(picker);
-  }
+  container?.appendChild?.(menu);
+  renderMenuView("top");
 
-  repositionQualityPicker(picker, anchorElement);
+  document.addEventListener("pointerdown", handleQualityPickerOutsideClick, true);
+  window.addEventListener("scroll", handleQualityPickerScrollOrResize, true);
+  window.addEventListener("resize", handleQualityPickerScrollOrResize, true);
+  document.addEventListener("keydown", handleQualityPickerKeyDown, true);
+}
 
-  setTimeout(() => {
-    document.addEventListener("pointerdown", handleQualityPickerOutsideClick, true);
-    window.addEventListener("scroll", handleQualityPickerScrollOrResize, true);
-    window.addEventListener("resize", handleQualityPickerScrollOrResize, true);
-    document.addEventListener("keydown", handleQualityPickerKeyDown, true);
-  }, 50);
+// Kept as an alias for callers that still use the old name.
+function showQualityPicker(candidate, anchorElement) {
+  openDownloadMenu(candidate, anchorElement);
 }
 
 function closeQualityPicker() {
@@ -575,18 +803,24 @@ function closeQualityPicker() {
   window.removeEventListener("scroll", handleQualityPickerScrollOrResize, true);
   window.removeEventListener("resize", handleQualityPickerScrollOrResize, true);
   document.removeEventListener("keydown", handleQualityPickerKeyDown, true);
+
+  const menu = document.getElementById("ldm-quality-picker");
+  const anchor = qualityPickerAnchor;
+  anchor?.setAttribute?.("aria-expanded", "false");
+  if (menu && menu.contains?.(document.activeElement) && anchor?.isConnected) {
+    anchor.focus?.({ preventScroll: true });
+  }
+  menu?.remove?.();
   qualityPickerAnchor = null;
-  const existing = document.getElementById("ldm-quality-picker");
-  if (existing) existing.remove();
+  menuCandidate = null;
+  menuView = "top";
 }
 
 function handleQualityPickerOutsideClick(event) {
-  const picker = document.getElementById("ldm-quality-picker");
-  if (!picker) return;
-  if (picker.contains(event.target)) return;
-  if (qualityPickerAnchor && qualityPickerAnchor.contains && qualityPickerAnchor.contains(event.target)) {
-    return;
-  }
+  const menu = document.getElementById("ldm-quality-picker");
+  if (!menu) return;
+  if (menu.contains?.(event.target)) return;
+  if (qualityPickerAnchor?.contains?.(event.target)) return;
   closeQualityPicker();
 }
 
@@ -637,13 +871,12 @@ function triggerCaptureWithFormat(candidate, format) {
       format: format ?? null
     }
   }, (response) => {
+    clearCaptureTimeout();
     if (chrome.runtime.lastError) {
-      clearCaptureTimeout();
       showToast(chrome.runtime.lastError.message, "error");
       return;
     }
     if (!response?.ok) {
-      clearCaptureTimeout();
       showToast(response?.error ?? "Download request failed.", "error");
       return;
     }
@@ -651,27 +884,23 @@ function triggerCaptureWithFormat(candidate, format) {
   });
 }
 
-function triggerCaptureForCandidate(candidate, anchorElement) {
-  if (!candidate) {
-    return;
-  }
-
-  if (isYtdlpSupportedSite()) {
-    showQualityPicker(candidate, anchorElement);
-    return;
-  }
-
-  triggerCaptureWithFormat(candidate, null);
-}
-
-function triggerCaptureOnce(candidate, anchorElement) {
+function triggerCaptureDirect(candidate) {
+  if (!candidate) return;
   const now = Date.now();
   if (now - lastCaptureRequestAt < 2000) {
     return;
   }
-
   lastCaptureRequestAt = now;
-  triggerCaptureForCandidate(candidate, anchorElement);
+  triggerCaptureWithFormat(candidate, null);
+}
+
+function triggerCaptureForCandidate(candidate, anchorElement) {
+  if (!candidate) return;
+  openDownloadMenu(candidate, anchorElement);
+}
+
+function triggerCaptureOnce(candidate, anchorElement) {
+  triggerCaptureDirect(candidate);
 }
 
 function pulseHoverButton() {
@@ -812,7 +1041,9 @@ function startPeriodicRefresh() {
 
 function scheduleMediaRefresh() {
   if (extensionDisconnected) return;
-  window.setTimeout(() => {
+  window.clearTimeout(mediaScanTimer);
+  mediaScanTimer = window.setTimeout(() => {
+    mediaScanTimer = null;
     reportObservedMediaCandidates();
     refreshRecentMediaCandidates();
   }, 180);
@@ -822,6 +1053,7 @@ function scheduleMediaOverlayRefresh() {
   if (extensionDisconnected) return;
   if (mediaRefreshTimer) {
     window.clearTimeout(mediaRefreshTimer);
+  window.clearTimeout(mediaScanTimer);
   }
 
   mediaRefreshTimer = window.setTimeout(() => {
@@ -928,7 +1160,7 @@ function extractCandidateFromTarget(target) {
 }
 
 function refreshMediaOverlay() {
-  if (!mediaOverlayRoot) {
+  if (window !== window.top || !mediaOverlayRoot) {
     return;
   }
 
@@ -1001,17 +1233,17 @@ function refreshMediaOverlay() {
     button = document.createElement("button");
     button.type = "button";
     button.className = "ldm-media-button";
-    button.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:5px;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download</span>`;
+    button.classList.add("ldm-ui", "ldm-media-button-floating");
+    button.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span>Download</span>`;
     button.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (activeCandidate) {
         triggerCaptureOnce(activeCandidate, button);
       }
-    });
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
     });
     mediaOverlayRoot.replaceChildren(button);
   }
@@ -1030,63 +1262,27 @@ function refreshMediaOverlay() {
 }
 
 function createSiteVideoBadge(onClick, label = "Download") {
-  const btn = document.createElement("div");
+  const btn = document.createElement("button");
+  btn.type = "button";
   btn.className = "ldm-site-btn";
-  btn.setAttribute("role", "button");
-  btn.setAttribute("tabindex", "0");
-  btn.setAttribute("title", "Download with Haul DM");
+  btn.setAttribute("title", "Haul DM — download options");
   btn.setAttribute("aria-label", "Download with Haul DM");
-  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-  btn.setAttribute("style", `
-    position: absolute !important;
-    top: 10px !important;
-    right: 10px !important;
-    z-index: 2147483647 !important;
-    background: linear-gradient(135deg, #10b981, #06b6d4) !important;
-    color: #04110d !important;
-    border: 0 !important;
-    border-radius: 9999px !important;
-    width: 30px !important;
-    height: 30px !important;
-    padding: 0 !important;
-    font: 700 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    letter-spacing: 0.02em !important;
-    cursor: pointer !important;
-    pointer-events: auto !important;
-    user-select: none !important;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.38) !important;
-    opacity: 0.9 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    white-space: nowrap !important;
-    transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease !important;
-  `);
+  btn.setAttribute("aria-haspopup", "menu");
+  btn.setAttribute("aria-expanded", "false");
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>`;
 
-  btn.addEventListener("mouseenter", () => {
-    btn.style.setProperty("opacity", "1", "important");
-    btn.style.setProperty("transform", "translateY(-1px) scale(1.02)", "important");
-    btn.style.setProperty("box-shadow", "0 6px 18px rgba(0,0,0,0.48)", "important");
-  });
-  btn.addEventListener("mouseleave", () => {
-    btn.style.setProperty("opacity", "0.9", "important");
-    btn.style.setProperty("transform", "none", "important");
-    btn.style.setProperty("box-shadow", "0 4px 14px rgba(0,0,0,0.38)", "important");
-  });
-  btn.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+  btn.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    event.stopImmediatePropagation();
   }, true);
-  btn.addEventListener("pointerup", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+  btn.addEventListener("pointerup", (event) => {
+    event.stopPropagation();
+    event.stopImmediatePropagation();
   }, true);
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     onClick(btn);
   }, true);
 
@@ -1230,20 +1426,21 @@ function extractFacebookVideoTitle(video, container) {
 }
 
 function refreshInlineDownloadButtons() {
+  if (window !== window.top) return;
   const host = window.location.hostname;
-  if (/youtube\.com|youtu\.be/.test(host)) {
+  if (/(^|\.)(youtube\.com|youtu\.be)$/i.test(host)) {
     injectYouTubeButton();
   }
-  if (/reddit\.com/.test(host)) {
+  if (/(^|\.)reddit\.com$/i.test(host)) {
     injectRedditButtons();
   }
   if (/x\.com|twitter\.com/.test(host)) {
     injectTwitterButtons();
   }
-  if (/facebook\.com|fb\.watch/.test(host)) {
+  if (/(^|\.)(facebook\.com|fb\.watch)$/i.test(host)) {
     injectFacebookButtons();
   }
-  if (/instagram\.com/.test(host)) {
+  if (/(^|\.)instagram\.com$/i.test(host)) {
     injectInstagramButtons();
   }
   injectGenericVideoButtons();
@@ -1401,13 +1598,12 @@ function injectRedditButtons() {
             sourceTitle: postTitle
           }
         }, (response) => {
+          clearCaptureTimeout();
           if (chrome.runtime?.lastError) {
-            clearCaptureTimeout();
             showToast(chrome.runtime.lastError.message, "error");
             return;
           }
           if (!response?.ok) {
-            clearCaptureTimeout();
             showToast(response?.error ?? "Download failed.", "error");
           }
         });
@@ -1416,7 +1612,14 @@ function injectRedditButtons() {
       }
     }, "Download");
 
-    player.insertAdjacentElement("beforebegin", btn);
+    btn.style.setProperty("position", "absolute", "important");
+    btn.style.setProperty("top", "12px", "important");
+    btn.style.setProperty("right", "12px", "important");
+    const playerPos = window.getComputedStyle?.(player)?.position;
+    if (!playerPos || playerPos === "static") {
+      player.style.setProperty("position", "relative", "important");
+    }
+    player.appendChild(btn);
   }
 }
 
@@ -1490,8 +1693,8 @@ function injectYouTubeButton() {
 
       btn.id = "ldm-yt-download-btn";
       btn.style.setProperty("top", "12px", "important");
-      btn.style.setProperty("right", "12px", "important");
-      btn.style.setProperty("left", "auto", "important");
+      btn.style.setProperty("left", "12px", "important");
+      btn.style.setProperty("right", "auto", "important");
       btn.style.setProperty("z-index", "2147483647", "important");
 
       const playerPos = window.getComputedStyle?.(player)?.position;
@@ -1788,23 +1991,60 @@ function collectOverlayContainers(mediaElement, preferredContainer = null) {
   return containers;
 }
 
-function showToast(message, tone = "info") {
-  if (!toastRoot) {
-    return;
+function toastIconSvg(tone) {
+  if (tone === "success") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
   }
+  if (tone === "error") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+}
 
-  if (toastTimer) {
-    window.clearTimeout(toastTimer);
+function dismissToast(toast) {
+  if (!toast) return;
+  if (toast._timer) window.clearTimeout(toast._timer);
+  toast.remove?.();
+}
+
+function showToast(message, tone = "info") {
+  if (!toastRoot) return;
+  applyUiTheme(toastRoot, document.body);
+
+  while (toastRoot.children.length >= 2) {
+    toastRoot.firstElementChild?.remove();
   }
 
   const toast = document.createElement("div");
   toast.className = `ldm-toast ldm-toast-${tone}`;
-  toast.textContent = message;
-  toastRoot.replaceChildren(toast);
+  toast.setAttribute("role", tone === "error" ? "alert" : "status");
+  toast.setAttribute("aria-live", tone === "error" ? "assertive" : "polite");
+  toast.setAttribute("aria-atomic", "true");
 
-  toastTimer = window.setTimeout(() => {
-    toastRoot?.replaceChildren();
-  }, 4500);
+  const icon = document.createElement("span");
+  icon.className = "ldm-toast-icon";
+  icon.innerHTML = toastIconSvg(tone);
+
+  const text = document.createElement("span");
+  text.className = "ldm-toast-message";
+  text.textContent = message;
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "ldm-toast-dismiss";
+  close.setAttribute("aria-label", "Dismiss notification");
+  close.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
+  close.addEventListener("click", (event) => {
+    event.stopPropagation();
+    dismissToast(toast);
+  });
+
+  toast.append(icon, text, close);
+  toastRoot.appendChild(toast);
+
+  if (tone !== "error") {
+    toast._timer = window.setTimeout(() => dismissToast(toast), 3200);
+  }
 }
 
 function findMediaContainer(target) {
