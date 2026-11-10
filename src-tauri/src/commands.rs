@@ -11,6 +11,7 @@ use tauri::{Manager, State};
 pub struct AppSettings {
     pub default_download_dir: String,
     pub max_concurrent_downloads: usize,
+    pub connections_per_download: usize,
     pub default_bandwidth_limit_kbps: u64,
     pub ask_browser_download_location: bool,
     pub hidden_sites: Vec<String>,
@@ -32,16 +33,146 @@ pub async fn inspect_url(
 #[tauri::command]
 pub async fn list_downloads(state: State<'_, AppState>) -> Result<Vec<DownloadRecord>, String> {
     let mut list = state.storage.list_downloads()?;
-    let live = state.live_metrics.lock().unwrap();
-    for item in &mut list {
-        if item.status == "in_progress" {
-            if let Some(&(speed, eta)) = live.get(&item.id) {
-                item.speed_bytes_per_second = Some(speed);
-                item.eta_seconds = eta;
+    {
+        let live = state.live_metrics.lock().unwrap();
+        for item in &mut list {
+            if item.status == "in_progress" {
+                if let Some(&(speed, eta)) = live.get(&item.id) {
+                    item.speed_bytes_per_second = Some(speed);
+                    item.eta_seconds = eta;
+                }
             }
         }
     }
+    // Overlay the on-disk size so a poll cannot show less progress than the
+    // last live event (SQLite is only written every 1.5s).
+    for item in &mut list {
+        if item.status == "in_progress" {
+            let actual = state
+                .download_service
+                .current_downloaded_bytes(std::path::Path::new(&item.save_path))
+                .await;
+            item.downloaded_bytes = item.downloaded_bytes.max(actual);
+        }
+    }
     Ok(list)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionInfo {
+    pub index: usize,
+    pub status: String,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub start_bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadDetails {
+    pub download: DownloadRecord,
+    pub connections: Vec<ConnectionInfo>,
+    pub resumable: bool,
+}
+
+fn connection_status(status: &str, segment_complete: bool) -> String {
+    match status {
+        "in_progress" => {
+            if segment_complete { "Completed" } else { "Receiving data" }
+        }
+        "paused" => {
+            if segment_complete { "Completed" } else { "Paused" }
+        }
+        "queued" | "scheduled" => "Pending",
+        "completed" => "Completed",
+        "failed" => "Failed",
+        "cancelled" => "Cancelled",
+        other => other,
+    }
+    .to_string()
+}
+
+#[tauri::command]
+pub fn open_download_window(
+    app_handle: tauri::AppHandle,
+    id: i64,
+    file_name: Option<String>,
+) -> Result<(), String> {
+    crate::download_window::open_download_window(&app_handle, id, file_name)
+}
+
+/// Full detail payload for the dedicated download window: the persisted
+/// record (with live speed/ETA) plus per-connection state derived from the
+/// segment manifest and its segment files on disk.
+#[tauri::command]
+pub fn focus_main_window(app_handle: tauri::AppHandle) {
+    crate::app::summon_main_window(&app_handle);
+}
+
+#[tauri::command]
+pub async fn download_details(
+    state: State<'_, AppState>,
+    id: i64,
+) -> Result<DownloadDetails, String> {
+    let mut record = state.storage.get_download(id)?;
+    let target_path = std::path::PathBuf::from(&record.save_path);
+    if record.status == "in_progress" {
+        // SQLite progress is throttled to 1.5s; the on-disk size is current,
+        // so polling never rewinds a percentage the UI already showed.
+        let actual = state
+            .download_service
+            .current_downloaded_bytes(&target_path)
+            .await;
+        record.downloaded_bytes = record.downloaded_bytes.max(actual);
+        if let Some(&(speed, eta)) = state.live_metrics.lock().unwrap().get(&id) {
+            record.speed_bytes_per_second = Some(speed);
+            record.eta_seconds = eta;
+        }
+    }
+
+    let manifest = state.download_service.load_segment_manifest(&target_path).await?;
+    let mut connections = Vec::new();
+
+    if let Some(manifest) = manifest {
+        connections.reserve(manifest.segments.len());
+        for segment in manifest.segments {
+            let capacity = segment.end.saturating_sub(segment.start).saturating_add(1);
+            let downloaded = std::cmp::min(segment.downloaded_bytes, capacity);
+            connections.push(ConnectionInfo {
+                index: segment.index,
+                status: connection_status(&record.status, capacity > 0 && downloaded >= capacity),
+                downloaded_bytes: downloaded,
+                total_bytes: capacity,
+                start_bytes: segment.start,
+            });
+        }
+    }
+
+    // Single-stream (or yt-dlp/stream) downloads still get one row.
+    if connections.is_empty() {
+        let downloaded = state
+            .download_service
+            .current_downloaded_bytes(&target_path)
+            .await;
+        let total = record.total_bytes.unwrap_or(0).max(downloaded);
+        connections.push(ConnectionInfo {
+            index: 0,
+            status: connection_status(
+                &record.status,
+                record.total_bytes.is_some_and(|total| downloaded >= total),
+            ),
+            downloaded_bytes: downloaded,
+            total_bytes: total,
+            start_bytes: 0,
+        });
+    }
+
+    Ok(DownloadDetails {
+        resumable: record.resumable,
+        download: record,
+        connections,
+    })
 }
 
 #[tauri::command]
@@ -125,6 +256,7 @@ pub async fn app_settings(state: State<'_, AppState>) -> Result<AppSettings, Str
     Ok(AppSettings {
         default_download_dir: state.default_download_dir().display().to_string(),
         max_concurrent_downloads: state.max_concurrent_downloads(),
+        connections_per_download: state.connections_per_download(),
         default_bandwidth_limit_kbps: state.default_bandwidth_limit_kbps().unwrap_or(0),
         ask_browser_download_location: state.storage.get_setting("ask_browser_download_location")?.as_deref() != Some("false"),
         hidden_sites: hidden_browser_sites(&state),
@@ -136,6 +268,7 @@ pub async fn update_app_settings(
     state: State<'_, AppState>,
     default_download_dir: Option<String>,
     max_concurrent_downloads: Option<usize>,
+    connections_per_download: Option<usize>,
     default_bandwidth_limit_kbps: Option<u64>,
     ask_browser_download_location: Option<bool>,
     hidden_sites: Option<Vec<String>>,
@@ -153,6 +286,13 @@ pub async fn update_app_settings(
         state.set_max_concurrent_downloads(value);
     }
 
+    if let Some(value) = connections_per_download {
+        if value == 0 || value > 16 {
+            return Err("connections per download must be between 1 and 16".to_string());
+        }
+        state.set_connections_per_download(value);
+    }
+
     if let Some(value) = default_bandwidth_limit_kbps {
         state.set_default_bandwidth_limit_kbps(if value == 0 { None } else { Some(value) });
     }
@@ -166,6 +306,7 @@ pub async fn update_app_settings(
     Ok(AppSettings {
         default_download_dir: state.default_download_dir().display().to_string(),
         max_concurrent_downloads: state.max_concurrent_downloads(),
+        connections_per_download: state.connections_per_download(),
         default_bandwidth_limit_kbps: state.default_bandwidth_limit_kbps().unwrap_or(0),
         ask_browser_download_location: state.storage.get_setting("ask_browser_download_location")?.as_deref() != Some("false"),
         hidden_sites: hidden_browser_sites(&state),
@@ -241,6 +382,7 @@ pub async fn resume_download(
 ) -> Result<DownloadRecord, String> {
     let record = state.storage.get_download(id)?;
     let metadata = state.download_service.inspect_url(&record.url).await?;
+    state.storage.set_resumable(id, metadata.resumable)?;
 
     let actual_bytes = state
         .download_service
@@ -282,6 +424,7 @@ pub async fn resume_download(
             target_path: std::path::Path::new(&record.save_path).to_path_buf(),
             resumable_hint: metadata.resumable,
             total_bytes_hint: total_bytes,
+            auto_open_window: true,
             expected_checksum: record.expected_checksum,
             scheduled_at: record.scheduled_at,
             bandwidth_limit_kbps: record.bandwidth_limit_kbps,

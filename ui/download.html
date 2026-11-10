@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download — Haul DM</title>
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("ldm_theme") || "system";
+                let effective = saved;
+                if (saved === "system") {
+                    effective = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                }
+                document.documentElement.setAttribute("data-theme", effective);
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dlw-body">
+    <main class="dlw">
+        <header class="dlw-header">
+            <div class="file-type-icon" id="dlw-icon"></div>
+            <div class="dlw-heading">
+                <div class="dlw-title-row">
+                    <h1 class="dlw-title" id="dlw-title">Download</h1>
+                    <span class="dlw-percent" id="dlw-percent">0%</span>
+                </div>
+            </div>
+            <div class="dlw-window-actions">
+                <button id="dlw-minimize" class="dlw-winbtn" title="Minimize" aria-label="Minimize window">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path></svg>
+                </button>
+                <button id="dlw-win-close" class="dlw-winbtn dlw-winbtn-close" title="Close" aria-label="Close window">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="progress-track dlw-progress" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="dlw-progress-track">
+            <div class="progress-fill" id="dlw-progress"></div>
+        </div>
+
+        <div class="dlw-overview">
+            <section class="dlw-summary" aria-label="Download summary">
+                <div class="dlw-stat" data-tile="status">
+                    <span class="dlw-label">Status</span>
+                    <span class="dlw-value"><span class="status-pill status-queued" id="dlw-status-pill"><span id="dlw-status">Queued</span></span></span>
+                </div>
+                <div class="dlw-stat" data-tile="size">
+                    <span class="dlw-label">File size</span>
+                    <span class="dlw-value" id="dlw-size">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="downloaded">
+                    <span class="dlw-label">Downloaded</span>
+                    <span class="dlw-value" id="dlw-downloaded">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="rate">
+                    <span class="dlw-label">Transfer rate</span>
+                    <span class="dlw-value" id="dlw-rate">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="eta">
+                    <span class="dlw-label">Time left</span>
+                    <span class="dlw-value" id="dlw-eta">—</span>
+                </div>
+                <div class="dlw-stat" data-tile="resumable">
+                    <span class="dlw-label">Resume support</span>
+                    <span class="dlw-value" id="dlw-resumable">—</span>
+                </div>
+            </section>
+
+            <section class="dlw-paths" aria-label="Download locations">
+                <div class="dlw-field">
+                    <span class="dlw-label">URL</span>
+                    <span class="dlw-value mono" id="dlw-url">—</span>
+                </div>
+                <div class="dlw-field">
+                    <span class="dlw-label">Save to</span>
+                    <span class="dlw-value mono" id="dlw-path">—</span>
+                </div>
+            </section>
+        </div>
+
+        <div id="dlw-error" class="dlw-error" role="alert" hidden></div>
+
+        <div class="dlw-controls">
+            <div class="dlw-controls-left">
+                <button id="dlw-toggle-details" class="btn btn-secondary btn-sm" aria-expanded="true" aria-controls="dlw-connections">Hide details</button>
+                <label class="checkbox-label" id="dlw-close-when-done-label">
+                    <input type="checkbox" id="dlw-close-when-done">
+                    <span>Close when completed</span>
+                </label>
+            </div>
+            <div class="dlw-controls-right">
+                <button id="dlw-open-file" class="btn btn-primary" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Open file
+                </button>
+                <button id="dlw-open-folder" class="btn btn-secondary" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+                    Open folder
+                </button>
+                <button id="dlw-pause" class="btn btn-secondary">Pause</button>
+                <button id="dlw-cancel" class="btn btn-danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                    Cancel download
+                </button>
+            </div>
+        </div>
+
+        <section id="dlw-connections" class="dlw-connections" aria-label="Connection details">
+            <p class="dlw-caption" title="Start positions and download progress by connection">Connections</p>
+            <div class="dlw-segbar" id="dlw-segbar" aria-hidden="true"></div>
+            <table class="dlw-table">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Downloaded</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Start</th>
+                    </tr>
+                </thead>
+                <tbody id="dlw-conn-body"></tbody>
+            </table>
+        </section>
+
+        <footer class="dlw-footer">
+            <span class="dlw-note">Downloads continue when minimized or closed.</span>
+            <button id="dlw-close" class="btn btn-secondary">Close</button>
+        </footer>
+    </main>
+
+    <script src="download.js"></script>
+</body>
+</html>

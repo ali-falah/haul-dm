@@ -51,6 +51,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     initEventListeners();
     loadViewState();
     markSidebarActive();
+    const categorySelect = document.getElementById("category-select");
+    if (categorySelect) {
+        categorySelect.value = currentCategory;
+        categorySelect.dispatchEvent(new Event("sync"));
+    }
     const sortSelect = document.getElementById("sort-select");
     if (sortSelect) {
         sortSelect.value = sortBy;
@@ -67,6 +72,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 const SORT_OPTIONS = ["newest", "oldest", "name", "size"];
 const STATUS_FILTERS = ["all", "in_progress", "queued", "paused", "completed", "failed"];
 const CATEGORY_FILTERS = ["all", "video", "audio", "archive", "document", "image", "other"];
+
+function syncRangeFill(input) {
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const value = Number(input.value);
+    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    input.style.setProperty("--fill", `${percent}%`);
+}
 
 function saveViewState() {
     try {
@@ -87,53 +100,14 @@ function loadViewState() {
     } catch (_) {}
 }
 
-// Reflect persisted view state onto the sidebar nav buttons (initial DOM
-// hard-codes "All Downloads" and the status section as active).
+// Reflect persisted view state onto the status filter buttons (the category
+// dropdown syncs itself through its hidden <select>).
 function markSidebarActive() {
-    document.querySelectorAll(".sidebar-nav [data-filter]").forEach((btn) => {
+    document.querySelectorAll(".status-filters [data-filter]").forEach((btn) => {
         const isActive = btn.dataset.filter === currentFilter;
         btn.classList.toggle("active", isActive);
-        if (isActive) btn.setAttribute("aria-current", "true");
-        else btn.removeAttribute("aria-current");
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
-    document.querySelectorAll(".sidebar-nav [data-category]").forEach((btn) => {
-        const isActive = btn.dataset.category === currentCategory;
-        btn.classList.toggle("active", isActive);
-        if (isActive) btn.setAttribute("aria-current", "true");
-        else btn.removeAttribute("aria-current");
-    });
-}
-
-// ── Sidebar Collapse ────────────────────────────────────────────────────────
-
-function setSidebarCollapsed(collapsed) {
-    const sidebar = document.getElementById("app-sidebar");
-    const btn = document.getElementById("sidebar-collapse-btn");
-    if (!sidebar) return;
-    sidebar.classList.toggle("collapsed", collapsed);
-    if (btn) {
-        btn.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
-        btn.setAttribute("aria-label", btn.title);
-        btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    }
-    try {
-        localStorage.setItem("ldm_sidebar_collapsed", collapsed ? "1" : "0");
-    } catch (_) {}
-}
-
-function initSidebarCollapse() {
-    const btn = document.getElementById("sidebar-collapse-btn");
-    if (!btn) return;
-    btn.addEventListener("click", () => {
-        const sidebar = document.getElementById("app-sidebar");
-        setSidebarCollapsed(!sidebar.classList.contains("collapsed"));
-    });
-    // Collapsed by default; a remembered preference wins afterwards.
-    let stored = null;
-    try {
-        stored = localStorage.getItem("ldm_sidebar_collapsed");
-    } catch (_) {}
-    setSidebarCollapsed(stored === null || stored === "1");
 }
 
 function initEventListeners() {
@@ -165,11 +139,22 @@ function initEventListeners() {
         });
     }
 
-    // Collapsible sidebar (collapsed by default)
-    initSidebarCollapse();
+    // Clicking a download row opens (or re-focuses) its dedicated window.
+    // Action buttons inside the row keep their own handlers.
+    document.getElementById("downloads-container").addEventListener("click", (event) => {
+        if (event.target.closest("button, a, input, [data-action]")) return;
+        const card = event.target.closest(".download-row");
+        if (!card) return;
+        const id = Number(card.dataset.downloadId);
+        if (!Number.isFinite(id)) return;
+        const download = allDownloads.find((item) => item.id === id);
+        invoke("open_download_window", { id, fileName: download?.fileName ?? null }).catch((error) => {
+            console.error("Could not open download window:", error);
+        });
+    });
 
-    // Sidebar status filters
-    document.querySelectorAll(".sidebar-nav [data-filter]").forEach((btn) => {
+    // Status filters
+    document.querySelectorAll(".status-filters [data-filter]").forEach((btn) => {
         btn.addEventListener("click", () => {
             currentFilter = btn.dataset.filter;
             markSidebarActive();
@@ -178,17 +163,14 @@ function initEventListeners() {
         });
     });
 
-    // Sidebar category filters
-    document.querySelectorAll(".sidebar-nav [data-category]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            currentCategory = btn.dataset.category;
-            markSidebarActive();
-            saveViewState();
-            renderDownloadsList();
-        });
+    // Category filter (custom dropdown backed by a hidden select)
+    document.getElementById("category-select").addEventListener("change", (event) => {
+        currentCategory = event.target.value;
+        saveViewState();
+        renderDownloadsList();
     });
 
-    // Open default download directory from the sidebar (path label or folder button)
+    // Open default download directory from the status bar
     async function openDefaultFolder() {
         if (appSettings?.defaultDownloadDir) {
             try {
@@ -199,8 +181,7 @@ function initEventListeners() {
             }
         }
     }
-    document.getElementById("sidebar-open-folder-btn").addEventListener("click", openDefaultFolder);
-    document.getElementById("sidebar-download-dir").addEventListener("click", openDefaultFolder);
+    document.getElementById("status-folder-btn").addEventListener("click", openDefaultFolder);
 
     // Search and Sort
     const searchInput = document.getElementById("search-input");
@@ -272,6 +253,11 @@ function initEventListeners() {
     });
     document.getElementById("settings-max-concurrent").addEventListener("input", (e) => {
         document.getElementById("concurrent-display").textContent = e.target.value;
+        syncRangeFill(e.target);
+    });
+    document.getElementById("settings-connections").addEventListener("input", (e) => {
+        document.getElementById("connections-display").textContent = e.target.value;
+        syncRangeFill(e.target);
     });
     document.querySelectorAll("[data-extension-tab]").forEach((tab) => tab.addEventListener("click", () => {
         document.querySelectorAll("[data-extension-tab]").forEach((item) => item.classList.toggle("active", item === tab));
@@ -866,7 +852,7 @@ function setupCustomDropdown(containerId, selectId) {
             const isMatch = item.dataset.value === val;
             item.classList.toggle("active", isMatch);
             if (isMatch && label) {
-                label.textContent = item.textContent;
+                label.textContent = item.dataset.label || item.textContent.trim();
             }
         });
     }
@@ -951,6 +937,7 @@ function setupCustomDropdown(containerId, selectId) {
 
 function initCustomDropdowns() {
     setupCustomDropdown("sort-dropdown", "sort-select");
+    setupCustomDropdown("category-dropdown", "category-select");
     setupCustomDropdown("theme-dropdown", "settings-theme-select");
 
     document.addEventListener("click", () => {
@@ -975,9 +962,16 @@ async function loadSettings() {
         appSettings = await invoke("app_settings");
         if (appSettings) {
             document.getElementById("settings-download-dir").textContent = appSettings.defaultDownloadDir || "~/Downloads";
-            document.getElementById("sidebar-download-dir").textContent = appSettings.defaultDownloadDir || "~/Downloads";
+            const folderButton = document.getElementById("status-folder-btn");
+            if (folderButton) {
+                folderButton.title = `Open ${appSettings.defaultDownloadDir || "~/Downloads"}`;
+            }
             document.getElementById("settings-max-concurrent").value = appSettings.maxConcurrentDownloads || 3;
             document.getElementById("concurrent-display").textContent = appSettings.maxConcurrentDownloads || 3;
+            document.getElementById("settings-connections").value = appSettings.connectionsPerDownload || 4;
+            document.getElementById("connections-display").textContent = appSettings.connectionsPerDownload || 4;
+            syncRangeFill(document.getElementById("settings-max-concurrent"));
+            syncRangeFill(document.getElementById("settings-connections"));
             document.getElementById("settings-bandwidth-limit").value = appSettings.defaultBandwidthLimitKbps || "";
             document.getElementById("settings-ask-browser-location").checked = appSettings.askBrowserDownloadLocation !== false;
             renderHiddenSites();
@@ -1041,10 +1035,12 @@ async function updateHiddenSites(hiddenSites) {
 
 async function saveSettings() {
     const maxConcurrent = parseInt(document.getElementById("settings-max-concurrent").value);
+    const connections = parseInt(document.getElementById("settings-connections").value);
     const bandwidthLimit = parseInt(document.getElementById("settings-bandwidth-limit").value) || 0;
 
     const args = {
         maxConcurrentDownloads: maxConcurrent,
+        connectionsPerDownload: connections,
         defaultBandwidthLimitKbps: bandwidthLimit,
         askBrowserDownloadLocation: document.getElementById("settings-ask-browser-location").checked,
     };
@@ -1171,7 +1167,7 @@ function renderDownloadsList() {
         if (!validIds.has(key)) liveDownloadStats.delete(key);
     }
 
-    // Filter (scheduled items count as queued in the sidebar, so include them)
+    // Filter (scheduled items count as queued in the filter bar, so include them)
     let filtered = allDownloads.filter((dl) => {
         if (currentFilter !== "all" && dl.status !== currentFilter) {
             if (!(currentFilter === "queued" && dl.status === "scheduled")) return false;
@@ -1320,145 +1316,117 @@ function renderDownloadCard(dl) {
 
     const progress = total ? Number(Math.min(100, (downloaded / total) * 100).toFixed(1)) : 0;
     const category = categorizeFile(dl.fileName);
+    const sizeText = total ? formatBytes(total) : formatBytes(downloaded);
+    const pathAttr = escapeAttr(dl.savePath);
+    const urlAttr = escapeAttr(dl.url);
+    const nameAttr = escapeAttr(dl.fileName);
 
-    let host = "";
-    try {
-        host = new URL(dl.url).hostname.replace(/^www\./, "");
-    } catch (_) {
-        host = "web";
-    }
-
-    // Size text
-    let sizeText = total
-        ? `${formatBytes(downloaded)} / ${formatBytes(total)}`
-        : formatBytes(downloaded);
-
-    // Speed text
-    let speedHtml = "";
-    if (isDownloading && speed > 0) {
-        speedHtml = `
-            <span class="metric-divider">·</span>
-            <span class="metric-speed">${formatBytes(speed)}/s</span>
-        `;
-    }
-
-    // ETA text
-    let etaHtml = "";
-    if (isDownloading && eta && eta > 0) {
-        etaHtml = `
-            <span class="metric-divider">·</span>
-            <span class="metric-eta">${formatTime(eta)} left</span>
-        `;
-    }
-
-    // Checksum indicator
-    let checksumHtml = "";
-    if (dl.checksumStatus === "verified") {
-        checksumHtml = `<span class="metric-checksum verified">✓ Checksum OK</span>`;
-    } else if (dl.checksumStatus === "mismatch") {
-        checksumHtml = `<span class="metric-checksum mismatch">✗ Checksum Mismatch</span>`;
-    }
-
-    // Action buttons
-    let actions = "";
-    if (dl.status === "completed") {
-        actions = `
-            <button class="btn btn-secondary btn-sm" data-action="open-file" data-path="${escapeAttr(dl.savePath)}" title="Open file">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                <span>Open</span>
-            </button>
-            <button class="btn btn-secondary btn-sm" data-action="open-folder" data-path="${escapeAttr(dl.savePath)}" title="Open enclosing folder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
-                <span>Folder</span>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-path" data-path="${escapeAttr(dl.savePath)}" title="Copy file path" aria-label="Copy file path">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-link" data-url="${escapeAttr(dl.url)}" title="Copy download URL" aria-label="Copy download URL">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="delete" data-id="${dl.id}" data-name="${escapeAttr(dl.fileName)}" title="Remove download" aria-label="Remove download">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
-        `;
-    } else if (isDownloading || dl.status === "queued") {
-        actions = `
-            <button class="btn btn-secondary btn-sm" data-action="pause" data-id="${dl.id}" title="Pause download">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect><rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect></svg>
-                <span>Pause</span>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-link" data-url="${escapeAttr(dl.url)}" title="Copy link" aria-label="Copy link">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
-            </button>
-            <button class="btn btn-danger btn-sm" data-action="cancel" data-id="${dl.id}" title="Cancel download">Cancel</button>
-        `;
+    let secondary = "";
+    if (isDownloading) {
+        secondary = speed > 0
+            ? `<span class="row-speed-main">${formatBytes(speed)}/s</span>${eta && eta > 0 ? `<span class="row-speed-sub">${formatTime(eta)} left</span>` : ""}`
+            : `<span class="row-speed-sub">Starting…</span>`;
+    } else if (dl.status === "paused") {
+        secondary = `<span class="row-speed-note">Paused at ${formatBytes(downloaded)}</span>`;
+    } else if (dl.status === "completed") {
+        if (dl.checksumStatus === "verified") {
+            secondary = `<span class="row-checksum ok">✓ Checksum OK</span>`;
+        } else if (dl.checksumStatus === "mismatch") {
+            secondary = `<span class="row-checksum bad">✗ Checksum mismatch</span>`;
+        } else {
+            secondary = `<span class="row-speed-sub">—</span>`;
+        }
+    } else if (dl.status === "failed") {
+        const message = dl.errorMessage || "Download failed";
+        secondary = `<span class="row-error" title="${escapeAttr(message)}">${escapeHtml(message)}</span>`;
+    } else if (dl.status === "queued" || dl.status === "scheduled") {
+        secondary = `<span class="row-speed-sub">Waiting…</span>`;
     } else {
-        // Paused or Failed
-        actions = `
-            <button class="btn btn-primary btn-sm" data-action="resume" data-id="${dl.id}" title="Resume download">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                <span>Resume</span>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-path" data-path="${escapeAttr(dl.savePath)}" title="Copy file path" aria-label="Copy file path">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="copy-link" data-url="${escapeAttr(dl.url)}" title="Copy link" aria-label="Copy link">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
-            </button>
-            <button class="btn btn-ghost btn-sm btn-icon-only" data-action="delete" data-id="${dl.id}" data-name="${escapeAttr(dl.fileName)}" title="Remove" aria-label="Remove download">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
-        `;
+        secondary = `<span class="row-speed-sub">—</span>`;
     }
 
-    // Error Box
-    let errorBox = "";
-    if (dl.status === "failed" && dl.errorMessage) {
-        errorBox = `<div class="card-error-box">${escapeHtml(dl.errorMessage)}</div>`;
+    const icon = {
+        play: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`,
+        pause: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1" ry="1"></rect><rect x="14" y="4" width="4" height="16" rx="1" ry="1"></rect></svg>`,
+        folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>`,
+        copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>`,
+        link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+        trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+        x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>`,
+    };
+
+    const actionButton = (action, title, glyph, attrs = "", variant = "btn-ghost") =>
+        `<button class="btn ${variant} btn-sm btn-icon-only" data-action="${action}" ${attrs} title="${title}" aria-label="${title}">${glyph}</button>`;
+
+    let actions;
+    if (dl.status === "completed") {
+        actions = [
+            actionButton("open-file", "Open file", icon.play, `data-path="${pathAttr}"`),
+            actionButton("open-folder", "Open folder", icon.folder, `data-path="${pathAttr}"`),
+            actionButton("copy-path", "Copy file path", icon.copy, `data-path="${pathAttr}"`),
+            actionButton("copy-link", "Copy download URL", icon.link, `data-url="${urlAttr}"`),
+            actionButton("delete", "Remove download", icon.trash, `data-id="${dl.id}" data-name="${nameAttr}"`, "btn-ghost row-danger"),
+        ].join("");
+    } else if (isDownloading || dl.status === "queued" || dl.status === "scheduled") {
+        actions = [
+            actionButton("pause", "Pause download", icon.pause, `data-id="${dl.id}"`),
+            actionButton("copy-link", "Copy download URL", icon.link, `data-url="${urlAttr}"`),
+            actionButton("cancel", "Cancel download", icon.x, `data-id="${dl.id}"`, "btn-ghost row-danger"),
+        ].join("");
+    } else {
+        actions = [
+            actionButton("resume", "Resume download", icon.play, `data-id="${dl.id}"`, "btn-primary"),
+            actionButton("copy-path", "Copy file path", icon.copy, `data-path="${pathAttr}"`),
+            actionButton("copy-link", "Copy download URL", icon.link, `data-url="${urlAttr}"`),
+            actionButton("delete", "Remove download", icon.trash, `data-id="${dl.id}" data-name="${nameAttr}"`, "btn-ghost row-danger"),
+        ].join("");
     }
 
     return `
-        <div class="download-card ${isDownloading ? "card-active" : ""}" data-download-id="${dl.id}">
-            <div class="card-header">
+        <div class="download-row status-${dl.status}" data-download-id="${dl.id}">
+            <div class="row-name">
                 <div class="file-type-icon">
                     ${getCategorySvgIcon(category)}
                 </div>
-                <div class="card-title-group">
-                    <div class="file-name-row">
-                        <span class="file-name" title="${escapeAttr(dl.fileName)} (${escapeAttr(dl.savePath)})">${escapeHtml(dl.fileName)}</span>
-                        <span class="domain-pill">${escapeHtml(host)}</span>
-                    </div>
+                <div class="namewrap">
+                    <span class="file-name" role="button" tabindex="0" title="${nameAttr} (${pathAttr})">${escapeHtml(dl.fileName)}</span>
+                    <span class="domain-pill">${escapeHtml(hostOf(dl.url))}</span>
                 </div>
+            </div>
+            <div class="row-status">
                 <div class="status-pill status-${dl.status}">
-                    ${dl.status === "in_progress" ? `<span class="status-dot status-dot-active"></span>` : ""}
                     <span>${formatStatusLabel(dl.status)}</span>
                 </div>
             </div>
-
-            <div class="progress-container">
-                <div class="progress-track">
-                    <div class="progress-fill" style="width: ${progress}%"></div>
-                </div>
+            <div class="row-size">${sizeText}</div>
+            <div class="row-progress">
+                <div class="progress-track"><div class="progress-fill" style="width: ${progress}%"></div></div>
+                <span class="row-percent">${total ? `${progress}%` : "Live"}</span>
             </div>
-
-            <div class="card-footer">
-                <div class="card-metrics">
-                    <span class="metric-size">${sizeText}</span>
-                    <span class="metric-percent">(${total ? `${progress}%` : "Live"})</span>
-                    <span class="metric-speed-wrapper">${speedHtml}</span>
-                    <span class="metric-eta-wrapper">${etaHtml}</span>
-                    ${checksumHtml}
-                </div>
-                <div class="card-actions">
-                    ${actions}
-                </div>
-            </div>
-            ${errorBox}
+            <div class="row-speed">${secondary}</div>
+            <div class="row-actions">${actions}</div>
         </div>
     `;
 }
 
+function hostOf(url) {
+    try {
+        return new URL(url).hostname.replace(/^www\./, "");
+    } catch (_) {
+        return "web";
+    }
+}
+
 function attachCardActionHandlers() {
+    document.querySelectorAll(".file-name[role='button']").forEach((el) => {
+        el.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            el.click();
+        });
+    });
+
     document.querySelectorAll("[data-action]").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             e.stopPropagation();
@@ -1594,7 +1562,7 @@ function handleDownloadStateEvent(event) {
         }
     }
 
-    // Fast DOM update if card exists
+    // Fast DOM update if the row exists
     const card = document.querySelector(`[data-download-id="${event.id}"]`);
     if (card) {
         const total = event.totalBytes;
@@ -1603,34 +1571,24 @@ function handleDownloadStateEvent(event) {
         const fill = card.querySelector(".progress-fill");
         if (fill) fill.style.width = `${progress}%`;
 
-        const metricsEl = card.querySelector(".card-metrics");
-        if (metricsEl) {
-            const sizeEl = metricsEl.querySelector(".metric-size");
-            if (sizeEl) {
-                sizeEl.textContent = total
-                    ? `${formatBytes(downloaded)} / ${formatBytes(total)}`
-                    : formatBytes(downloaded);
-            }
-            const pctEl = metricsEl.querySelector(".metric-percent");
-            if (pctEl) {
-                pctEl.textContent = `(${total ? `${progress}%` : "Live"})`;
-            }
+        const sizeEl = card.querySelector(".row-size");
+        if (sizeEl) {
+            sizeEl.textContent = total ? formatBytes(total) : formatBytes(downloaded);
+        }
+        const pctEl = card.querySelector(".row-percent");
+        if (pctEl) {
+            pctEl.textContent = total ? `${progress}%` : "Live";
+        }
 
+        if (event.status === "in_progress") {
             const stats = liveDownloadStats.get(event.id);
             const speed = stats?.speedBytesPerSecond || 0;
-            const speedWrap = metricsEl.querySelector(".metric-speed-wrapper");
-            if (speedWrap) {
-                speedWrap.innerHTML = speed > 0
-                    ? `<span class="metric-divider">·</span><span class="metric-speed">${formatBytes(speed)}/s</span>`
-                    : "";
-            }
-
             const eta = stats?.etaSeconds;
-            const etaWrap = metricsEl.querySelector(".metric-eta-wrapper");
-            if (etaWrap) {
-                etaWrap.innerHTML = (eta && eta > 0)
-                    ? `<span class="metric-divider">·</span><span class="metric-eta">${formatTime(eta)} left</span>`
-                    : "";
+            const speedEl = card.querySelector(".row-speed");
+            if (speedEl) {
+                speedEl.innerHTML = speed > 0
+                    ? `<span class="row-speed-main">${formatBytes(speed)}/s</span>${eta && eta > 0 ? `<span class="row-speed-sub">${formatTime(eta)} left</span>` : ""}`
+                    : `<span class="row-speed-sub">Starting…</span>`;
             }
         }
 
@@ -1701,6 +1659,7 @@ function updateCounts() {
     };
 
     const catCounts = {
+        all: 0,
         video: 0,
         audio: 0,
         archive: 0,
@@ -1716,6 +1675,7 @@ function updateCounts() {
             counts.queued++;
         }
 
+        catCounts.all++;
         const cat = categorizeFile(dl.fileName);
         if (catCounts[cat] !== undefined) {
             catCounts[cat]++;
@@ -1730,6 +1690,7 @@ function updateCounts() {
     document.getElementById("count-failed").textContent = counts.failed;
 
     const catElements = {
+        "cat-all": document.getElementById("cat-all"),
         "cat-video": document.getElementById("cat-video"),
         "cat-audio": document.getElementById("cat-audio"),
         "cat-archive": document.getElementById("cat-archive"),
@@ -1739,6 +1700,16 @@ function updateCounts() {
     };
     for (const [id, el] of Object.entries(catElements)) {
         if (el) el.textContent = catCounts[id.replace("cat-", "")] ?? 0;
+    }
+
+    const totalsEl = document.getElementById("status-totals");
+    if (totalsEl) {
+        const totalBytes = allDownloads.reduce(
+            (sum, dl) => sum + (dl.totalBytes || dl.downloadedBytes || 0),
+            0
+        );
+        const count = allDownloads.length;
+        totalsEl.textContent = `${count} download${count === 1 ? "" : "s"}${totalBytes ? ` · ${formatBytes(totalBytes)}` : ""}`;
     }
 }
 
@@ -1832,7 +1803,7 @@ const MAX_VISIBLE_TOASTS = 5;
 function dismissToast(toast) {
     clearTimeout(toast._timer);
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(6px)";
+    toast.style.transform = "translateX(8px)";
     toast.style.transition = "all 0.2s ease";
     setTimeout(() => toast.remove(), 200);
 }
@@ -1858,6 +1829,8 @@ function showToast(message, type = "info", duration = 2800) {
 
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
+    toast.setAttribute("role", type === "error" ? "alert" : "status");
+    toast.setAttribute("aria-atomic", "true");
     toast.innerHTML = `
         ${toastIconSvg(type)}
         <span>${escapeHtml(message)}</span>
@@ -1879,10 +1852,15 @@ function showActionToast({ message, type = "info", duration = 2800, sticky = fal
 
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
+    toast.setAttribute("role", type === "error" ? "alert" : "status");
+    toast.setAttribute("aria-atomic", "true");
     toast.innerHTML = `
         ${toastIconSvg(type)}
         <span>${escapeHtml(message)}</span>
         ${actions.map((action) => `<button class="toast-action">${escapeHtml(action.label)}</button>`).join("")}
+        ${sticky ? `<button type="button" class="toast-dismiss" title="Dismiss" aria-label="Dismiss notification">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>` : ""}
     `;
 
     toast.querySelectorAll(".toast-action").forEach((btn, index) => {
@@ -1892,6 +1870,11 @@ function showActionToast({ message, type = "info", duration = 2800, sticky = fal
             const action = actions[index];
             if (action) action.onClick();
         });
+    });
+
+    toast.querySelector(".toast-dismiss")?.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        dismissToast(toast);
     });
 
     if (sticky) {

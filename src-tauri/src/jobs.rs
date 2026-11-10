@@ -82,6 +82,7 @@ pub async fn queue_download_request(
         expected_checksum: expected_checksum.clone(),
         scheduled_at: scheduled_at.clone(),
         bandwidth_limit_kbps,
+        resumable: metadata.resumable,
     })?;
 
     let initial_status = if scheduled_at.is_some() {
@@ -118,6 +119,7 @@ pub async fn queue_download_request(
             target_path,
             resumable_hint: metadata.resumable,
             total_bytes_hint: metadata.content_length,
+            auto_open_window: true,
             expected_checksum,
             scheduled_at,
             bandwidth_limit_kbps,
